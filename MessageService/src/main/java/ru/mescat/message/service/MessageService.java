@@ -165,7 +165,7 @@ public class MessageService {
             chat = new ChatEntity(ChatType.PERSONAL);
             chat = chatService.save(chat);
             chatUserService.save(new ChatUserEntity(chat,userId));
-            chatUserService.save(new ChatUserEntity(chat,userId));
+            chatUserService.save(new ChatUserEntity(chat,user.getId()));
         }
 
         sendMessage(new MessageDto(chat.getChatId(),message.getMessage(),message.getEncryptName()));

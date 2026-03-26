@@ -11,7 +11,7 @@ import ru.mescat.user.service.UserService;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/message/api")
+@RequestMapping("/api")
 public class UserController {
 
     private UserService userService;

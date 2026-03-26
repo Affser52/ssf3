@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/message/api/encrypt_message_key")
+@RequestMapping("/api/encrypt_message_key")
 public class EncryptMessageKeyController {
 
     private DeleteSentKeysService deleteSentKeysService;

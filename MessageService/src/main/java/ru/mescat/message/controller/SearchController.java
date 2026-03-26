@@ -13,7 +13,7 @@ import ru.mescat.user.service.UserService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/message/api")
+@RequestMapping("/api")
 public class SearchController {
 
     private final UserService userService;

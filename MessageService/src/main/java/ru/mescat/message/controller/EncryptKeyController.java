@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/message/api/encrypt_key")
+@RequestMapping("/api/encrypt_key")
 public class EncryptKeyController {
 
     private KeyVaultService keyVaultService;

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/message/api")
+@RequestMapping("/api")
 public class MessageController {
 
     private MessageService messageService;
@@ -39,7 +39,7 @@ public class MessageController {
             return ResponseEntity.notFound().build();
         }
 
-        return ResponseEntity.ok(messages.stream().map(MessageEntityMessageDtoMapper::convert).toList());
+        return ResponseEntity.ok(messages);
     }
 
     @GetMapping("/getMessageInChatWithLimit/{messageId}/{count}")
@@ -50,9 +50,7 @@ public class MessageController {
         List<MessageEntity> messages;
         try{
             messages = messageService.getMessagesRelativeToMessage(messageId, count);
-        } catch (NotFoundException e){
-            return ResponseEntity.notFound().build();
-        } catch (ChatNotFoundException e){
+        } catch (NotFoundException | ChatNotFoundException e){
             return ResponseEntity.notFound().build();
         }
         if (messages==null){
