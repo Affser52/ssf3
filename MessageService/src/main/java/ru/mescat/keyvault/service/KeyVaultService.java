@@ -19,141 +19,110 @@ import java.util.UUID;
 @Service
 public class KeyVaultService {
 
-    private RestClient restClient;
+    private final RestClient restClient;
 
-    public KeyVaultService(@Qualifier("key_vault") RestClient restClient){
+    public KeyVaultService(@Qualifier("key_vault") RestClient restClient) {
         this.restClient = restClient;
     }
 
-
-    public PublicKey getKey(String id){
-        try{
-            PublicKey keys = restClient.get()
+    public PublicKey getKey(String id) {
+        try {
+            return restClient.get()
                     .uri("/api/public_key/{id}", id)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(PublicKey.class);
-            return keys;
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 
-    public PublicKey getKeyByUserId(String id){
-        try{
-            PublicKey keys = restClient.get()
-                    .uri("/byUserId/{userId}", id)
+    public PublicKey getKeyByUserId(String id) {
+        try {
+            return restClient.get()
+                    .uri("/api/public_key/byUserId/{userId}", id)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(PublicKey.class);
-            return keys;
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 
-    public List<PublicKey> getKeysByUserIdIn(List<UUID> ids){
-        try{
-            List<PublicKey> keys = restClient.post()
+    public List<PublicKey> getKeysByUserIdIn(List<UUID> ids) {
+        try {
+            return restClient.post()
                     .uri("/api/public_key/byUserIdIn")
                     .body(ids)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .body(new ParameterizedTypeReference<List<PublicKey>>() {
-                    });
-            return keys;
+                    .body(new ParameterizedTypeReference<List<PublicKey>>() {});
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 
-    public List<NewPrivateKeyEntity> getPrivateKeys(UUID userId){
-        try{
-            List<NewPrivateKeyEntity> list = restClient.get()
-                    .uri("/api/new_private_key/{userId}",userId)
+    public List<NewPrivateKeyEntity> getPrivateKeys(UUID userId) {
+        try {
+            return restClient.get()
+                    .uri("/api/new_private_key/{userId}", userId)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(new ParameterizedTypeReference<List<NewPrivateKeyEntity>>() {});
-            return list;
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 
-    public NewPrivateKeyEntity saveNewPrivateKey(NewPrivateKeyDto newPrivateKeyDto){
-        try{
-            NewPrivateKeyEntity keyEntity = restClient.post()
-                    .uri("/api/new_private_key")
+    public NewPrivateKeyEntity saveNewPrivateKey(NewPrivateKeyDto newPrivateKeyDto) {
+        try {
+            return restClient.post()
+                    .uri("/api/new_private_key/")
                     .body(newPrivateKeyDto)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(NewPrivateKeyEntity.class);
-            return keyEntity;
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 
-    public PublicKey saveKey(SaveDto saveDto){
-        try{
-            PublicKey key = restClient.post()
+    public PublicKey saveKey(SaveDto saveDto) {
+        try {
+            return restClient.post()
                     .uri("/api/public_key/save")
                     .body(saveDto)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(PublicKey.class);
-            return key;
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 
-    public void deleteKeyById(String keyId){
-        try{
+    public void deleteKeyById(UUID keyId) {
+        try {
             restClient.post()
                     .uri("/api/public_key/delete")
                     .body(keyId)
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-
-            throw new RemoteServiceException(status, message);
+            throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
-
-
 }

@@ -13,46 +13,92 @@ import java.util.UUID;
 @RequestMapping("/api/public_key")
 public class PublicKeysController {
 
-    private PublicKeyService publicKeyService;
+    private final PublicKeyService publicKeyService;
 
-    public PublicKeysController(PublicKeyService service){
-        this.publicKeyService=service;
+    public PublicKeysController(PublicKeyService service) {
+        this.publicKeyService = service;
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PublicKeyEntity> get(@PathVariable UUID id){
-        return ResponseEntity.ok(publicKeyService.findById(id));
+    public ResponseEntity<?> get(@PathVariable UUID id) {
+        if (id == null) {
+            return ResponseEntity.badRequest().body("Идентификатор ключа не должен быть пустым.");
+        }
+
+        PublicKeyEntity entity = publicKeyService.findById(id);
+        if (entity == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(entity);
     }
 
     @GetMapping("/byUserId/{userId}")
-    public ResponseEntity<PublicKeyEntity> getByUserId(@PathVariable UUID userId){
-        return ResponseEntity.ok(publicKeyService.findByUserId(userId));
+    public ResponseEntity<?> getByUserId(@PathVariable UUID userId) {
+        if (userId == null) {
+            return ResponseEntity.badRequest().body("Идентификатор пользователя не должен быть пустым.");
+        }
+
+        PublicKeyEntity entity = publicKeyService.findByUserId(userId);
+        if (entity == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(entity);
     }
 
     @PostMapping("/byUserIdIn")
-    public ResponseEntity<List<PublicKeyEntity>> getByUserIdIn(@RequestBody List<UUID> userIds){
+    public ResponseEntity<?> getByUserIdIn(@RequestBody List<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return ResponseEntity.badRequest().body("Список идентификаторов пользователей не должен быть пустым.");
+        }
+
         return ResponseEntity.ok(publicKeyService.findAllByUserIdIn(userIds));
     }
 
     @PostMapping("/")
-    public ResponseEntity<List<PublicKeyEntity>> get(@RequestBody List<UUID> userIds){
-        return ResponseEntity.ok(publicKeyService.findAllById(userIds));
+    public ResponseEntity<?> get(@RequestBody List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body("Список идентификаторов ключей не должен быть пустым.");
+        }
+
+        return ResponseEntity.ok(publicKeyService.findAllById(ids));
     }
 
     @PostMapping("/save")
-    public ResponseEntity<PublicKeyEntity> save(@RequestBody SaveDto saveDto){
-        if(saveDto.getKey()==null || saveDto.getUserId()==null){
-            return ResponseEntity.ok(null);
+    public ResponseEntity<?> save(@RequestBody SaveDto saveDto) {
+        if (saveDto == null) {
+            return ResponseEntity.badRequest().body("Тело запроса не должно быть пустым.");
         }
+        if (saveDto.getUserId() == null) {
+            return ResponseEntity.badRequest().body("Идентификатор пользователя не должен быть пустым.");
+        }
+        if (saveDto.getKey() == null || saveDto.getKey().length == 0) {
+            return ResponseEntity.badRequest().body("Ключ не должен быть пустым.");
+        }
+        if (saveDto.getKey().length > 8192) {
+            return ResponseEntity.badRequest().body("Размер ключа превышает допустимый предел.");
+        }
+
         PublicKeyEntity publicKeyEntity = new PublicKeyEntity();
         publicKeyEntity.setKey(saveDto.getKey());
         publicKeyEntity.setUserId(saveDto.getUserId());
+
         return ResponseEntity.ok(publicKeyService.save(publicKeyEntity));
     }
 
     @PostMapping("/delete")
-    public ResponseEntity delete(@RequestBody UUID id){
+    public ResponseEntity<?> delete(@RequestBody UUID id) {
+        if (id == null) {
+            return ResponseEntity.badRequest().body("Идентификатор ключа не должен быть пустым.");
+        }
+
+        PublicKeyEntity existing = publicKeyService.findById(id);
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
+        }
+
         publicKeyService.deleteById(id);
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok("Удаление выполнено успешно.");
     }
 }
