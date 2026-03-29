@@ -97,11 +97,11 @@ public class MessageService {
 
         String json;
         try {
-            json = objectMapper.writeValueAsString(messageDto);
+            json = objectMapper.writeValueAsString(message);
         } catch (Exception e){
             throw new ParsingException("Не удалось запарсить данные.");
         }
-        webSocketService.sendToTopic(json,messageDto.getChatId());
+        webSocketService.sendToTopic(json,message.getChatId());
     }
 
     public List<MessageEntity> getLastNMessagesForEachUserChat(UUID userId, int limit) {
@@ -111,6 +111,7 @@ public class MessageService {
         return repository.findLastNMessagesForEachUserChat(userId, limit);
     }
 
+    @Transactional
     public List<MessageEntity> getMessagesRelativeToMessage(Long messageId, int count) {
         if (count == 0) {
             return List.of();
@@ -156,6 +157,10 @@ public class MessageService {
     public ChatDto sendMessageAndCreateChat(NewMessageToNewChat message){
 
         User user = userService.findById(message.getUserId());
+
+        if(user==null){
+            throw new NotFoundException("Пользователь не найден.");
+        }
 
         UUID userId = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
         ChatEntity chat = chatUserService.findPersonalBetween(message.getUserId(),userId,ChatType.PERSONAL);

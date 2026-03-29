@@ -36,8 +36,16 @@ public class PublicKeyService {
         repository.deleteById(id);
     }
 
-    public Integer getCountPublicKeysByUserId(UUID userId){
-        return repository.getCountPublicKeysByUserId(userId);
-    }
+   public PublicKeyEntity findById(UUID id){
+        return repository.findById(id).orElse(null);
+   }
+
+   public PublicKeyEntity findByUserId(UUID userId){
+        return repository.findByUserId(userId);
+   }
+
+   public List<PublicKeyEntity> findAllByUserIdIn(List<UUID> userIds){
+        return repository.findAllByUserIdIn(userIds);
+   }
 
 }

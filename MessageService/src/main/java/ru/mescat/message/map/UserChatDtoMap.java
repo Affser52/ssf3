@@ -77,14 +77,25 @@ public class UserChatDtoMap {
         }
 
         List<ChatDto> chatDtos = users.stream().map(u -> {
-            ChatUserDto chatUserDto = userAndChats.stream().filter(uc -> uc.getUserId().equals(u.getId()))
-                    .findFirst().orElse(null);
-            ChatUserEntity chatUserEntity = chatUsers.stream().filter(cu -> cu.getChat().getChatId().equals(chatUserDto.getChatId()))
-                    .findFirst().orElse(null);
-            ChatDto chatDto = new ChatDto(chatUserEntity != null ? chatUserEntity.getChat().getChatId() : null
-                    , chatUserEntity != null ? chatUserEntity.getChat().getChatType() : ChatType.PERSONAL,
-                    u.getUsername(), u.getAvatarUrl());
-            return chatDto;
+            ChatUserDto chatUserDto = userAndChats.stream()
+                    .filter(uc -> uc.getUserId().equals(u.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            ChatUserEntity chatUserEntity = null;
+            if (chatUserDto != null) {
+                chatUserEntity = chatUsers.stream()
+                        .filter(cu -> cu.getChat().getChatId().equals(chatUserDto.getChatId()))
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            return new ChatDto(
+                    chatUserEntity != null ? chatUserEntity.getChat().getChatId() : null,
+                    chatUserEntity != null ? chatUserEntity.getChat().getChatType() : ChatType.PERSONAL,
+                    u.getUsername(),
+                    u.getAvatarUrl()
+            );
         }).toList();
 
         List<MessageEntity> messageEntities = messageService.getLastNMessagesForEachUserChat(userId, 1);

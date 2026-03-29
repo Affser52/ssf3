@@ -11,10 +11,8 @@ import ru.mescat.message.service.MessageService;
 import ru.mescat.user.dto.User;
 import ru.mescat.user.service.UserService;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 
@@ -37,78 +35,55 @@ public class ToChatDtoMapper {
         return chatDtos;
     }
 
-    public List<ChatDto> personalConvert(List<ChatUserEntity> chatUserEntities, UUID userMain) {
-        List<ChatUserEntity> personalChat = chatUserEntities.stream()
-                .filter(c -> c.getChat().getChatType() == ChatType.PERSONAL)
+    private List<ChatDto> personalConvert(List<ChatUserEntity> chatUserEntities, UUID userMain) {
+        List<ChatUserEntity> personalChats = chatUserEntities.stream()
+                .filter(c -> c.getChat().getChatType().equals(ChatType.PERSONAL))
                 .toList();
-
-        if (personalChat.isEmpty()) {
-            return List.of();
-        }
-
-        List<Long> chatIds = personalChat.stream()
+        List<Long> chatIds = personalChats.stream()
                 .map(c -> c.getChat().getChatId())
                 .toList();
-
         List<ChatUserDto> chatUserDtos = chatUserService.findAllChatUsersByChatIds(chatIds, userMain);
-
-        if (chatUserDtos == null || chatUserDtos.isEmpty()) {
-            return List.of();
-        }
-
         List<UUID> userIds = chatUserDtos.stream()
                 .map(ChatUserDto::getUserId)
                 .toList();
-
         List<User> users = userService.findAllByIds(userIds);
-
-        List<ChatDto> result = new ArrayList<>();
-
         List<MessageEntity> messageEntities = messageService.getLastNMessagesForEachUserChat(userMain, 1);
 
-        for (ChatUserEntity chatUserEntity : personalChat) {
-            Long currentChatId = chatUserEntity.getChat().getChatId();
+        Map<Long, ChatUserDto> chatUserMap = chatUserDtos.stream()
+                .collect(Collectors.toMap(
+                        ChatUserDto::getChatId,
+                        cu -> cu,
+                        (a, b) -> a
+                ));
 
-            ChatUserDto chatUserDto = chatUserDtos.stream()
-                    .filter(c -> Objects.equals(c.getChatId(), currentChatId))
-                    .findFirst()
-                    .orElse(null);
+        Map<UUID, User> userMap = users.stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        u -> u,
+                        (a, b) -> a
+                ));
 
-            if (chatUserDto == null) {
-                continue;
-            }
+        Map<Long, MessageEntity> messageMap = messageEntities.stream()
+                .collect(Collectors.toMap(
+                        m -> m.getChat().getChatId(),
+                        m -> m,
+                        (a, b) -> a
+                ));
+        return personalChats.stream().map(c -> {
+            Long currentChatId = c.getChat().getChatId();
+            ChatUserDto chatUserDto = chatUserMap.get(currentChatId);
+            User user = chatUserDto != null ? userMap.get(chatUserDto.getUserId()) : null;
+            MessageEntity message = messageMap.get(currentChatId);
 
-            User user = users.stream()
-                    .filter(u -> Objects.equals(u.getId(), chatUserDto.getUserId()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (user == null) {
-                continue;
-            }
-
-            byte[] message = null;
-            String encryptName = null;
-
-            MessageEntity messageEntity = messageEntities.stream()
-                    .filter(m -> m.getChat().getChatId().equals(currentChatId))
-                    .findFirst().orElse(null);
-            if(messageEntity!=null){
-                message=messageEntity.getMessage();
-                encryptName=messageEntity.getEncryptionName();
-            }
-
-            result.add(new ChatDto(
+            return new ChatDto(
                     currentChatId,
-                    chatUserEntity.getChat().getChatType(),
-                    user.getUsername(),
-                    user.getAvatarUrl(),
-                    message,
-                    encryptName
-            ));
-        }
-
-        return result;
+                    c.getChat().getChatType(),
+                    user != null ? user.getUsername() : null,
+                    user != null ? user.getAvatarUrl() : null,
+                    message != null ? message.getMessage() : null,
+                    message != null ? message.getEncryptionName() : null
+            );
+        }).toList();
     }
 
     public List<ChatDto> groupConvert(List<ChatUserEntity> chatUserEntities, UUID userMain) {
@@ -139,7 +114,6 @@ public class ToChatDtoMapper {
             if(message==null){
                 continue;
             }
-
             chatDto.setLastMessage(message.getMessage());
             chatDto.setEncryptName(message.getEncryptionName());
         }

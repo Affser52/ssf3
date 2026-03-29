@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/public_keys")
+@RequestMapping("/api/public_key")
 public class PublicKeysController {
 
     private PublicKeyService publicKeyService;
@@ -20,18 +20,23 @@ public class PublicKeysController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<List<PublicKeyEntity>> get(@PathVariable UUID id){
-        return ResponseEntity.ok(publicKeyService.findAllById(id));
+    public ResponseEntity<PublicKeyEntity> get(@PathVariable UUID id){
+        return ResponseEntity.ok(publicKeyService.findById(id));
+    }
+
+    @GetMapping("/byUserId/{userId}")
+    public ResponseEntity<PublicKeyEntity> getByUserId(@PathVariable UUID userId){
+        return ResponseEntity.ok(publicKeyService.findByUserId(userId));
+    }
+
+    @PostMapping("/byUserIdIn")
+    public ResponseEntity<List<PublicKeyEntity>> getByUserIdIn(@RequestBody List<UUID> userIds){
+        return ResponseEntity.ok(publicKeyService.findAllByUserIdIn(userIds));
     }
 
     @PostMapping("/")
     public ResponseEntity<List<PublicKeyEntity>> get(@RequestBody List<UUID> userIds){
         return ResponseEntity.ok(publicKeyService.findAllById(userIds));
-    }
-
-    @GetMapping("/count/{id}")
-    public ResponseEntity<Integer> getCountPublicKeysByUserId(@PathVariable UUID id){
-        return ResponseEntity.ok(publicKeyService.getCountPublicKeysByUserId(id));
     }
 
     @PostMapping("/save")

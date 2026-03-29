@@ -9,9 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface PublicKeyRepository extends JpaRepository<PublicKeyEntity, UUID> {
-    @Query(value = """
-            SELECT COUNT(id) FROM public_keys
-            WHERE user_id = :id
-            """, nativeQuery = true)
-    Integer getCountPublicKeysByUserId(@Param("id") UUID id);
+    PublicKeyEntity findByUserId(UUID userId);
+
+    List<PublicKeyEntity> findAllByUserIdIn(List<UUID> userIds);
 }

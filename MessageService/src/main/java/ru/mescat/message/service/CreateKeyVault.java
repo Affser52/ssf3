@@ -33,14 +33,6 @@ public class CreateKeyVault {
     }
 
     public boolean addNewKey(byte[] publicKey, Authentication authentication){
-        Integer countAccounts = keyVaultService.getActiveCountPublicKey(authentication.getName());
-        if(countAccounts==null){
-            throw new NotFoundException("Не смогли получить существующие ключи");
-        }
-
-        if(countAccounts>=maxActiveKey){
-            throw new MaxActiveKeysLimitExceededException("Максимальное число активных сессий. Ограничьте доступ других ключей.");
-        }
         UUID userId = UUID.fromString(authentication.getName());
 
         PublicKey pk = keyVaultService.saveKey(new SaveDto(userId,publicKey));
