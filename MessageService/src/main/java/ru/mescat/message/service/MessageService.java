@@ -1,5 +1,6 @@
 package ru.mescat.message.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -10,6 +11,9 @@ import ru.mescat.message.entity.ChatEntity;
 import ru.mescat.message.entity.ChatUserEntity;
 import ru.mescat.message.entity.MessageEntity;
 import ru.mescat.message.entity.enums.ChatType;
+import ru.mescat.message.event.dto.DeleteMessage;
+import ru.mescat.message.event.dto.NewMessage;
+import ru.mescat.message.event.dto.NewUserInChat;
 import ru.mescat.message.exception.*;
 import ru.mescat.message.map.MessageDtoToMessageEntity;
 import ru.mescat.message.map.MessageEntityToMessageForUser;
@@ -30,6 +34,7 @@ public class MessageService {
     private ChatService chatService;
     private UserService userService;
     private MessageDtoToMessageEntity messageDtoToMessageEntityConvert;
+    ApplicationEventPublisher applicationEventPublisher;
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public MessageService(MessageRepository messageRepository,
@@ -37,8 +42,10 @@ public class MessageService {
                           UsersBlackListService usersBlackListService,
                           ChatService chatService,
                           UserService userService,
-                          MessageDtoToMessageEntity messageDtoToMessageEntity
+                          MessageDtoToMessageEntity messageDtoToMessageEntity,
+                          ApplicationEventPublisher applicationEventPublisher
                           ){
+        this.applicationEventPublisher=applicationEventPublisher;
         this.messageDtoToMessageEntityConvert=messageDtoToMessageEntity;
         this.userService=userService;
         this.chatService=chatService;
@@ -64,7 +71,7 @@ public class MessageService {
     }
 
     @Transactional
-    public void sendMessage(UUID userId, MessageDto messageDto){
+    public MessageForUser sendMessage(UUID userId, MessageDto messageDto){
 
         if(!chatUserService.existsByChatIdAndUserId(messageDto.getChatId(),userId)){
             throw new ChatNotFoundException("Чат не существует.");
@@ -88,7 +95,9 @@ public class MessageService {
 
         MessageForUser message = MessageEntityToMessageForUser.convert(messageEntity);
 
+        applicationEventPublisher.publishEvent(new NewMessage(messageEntity));
 
+        return message;
     }
 
     public List<MessageEntity> getLastNMessagesForEachUserChat(UUID userId, int limit) {
@@ -123,16 +132,8 @@ public class MessageService {
         }
 
         deleteById(deleteMessage.getMessageId());
-    }
 
-    public void deleteAllChatInPersonalChat(Long chatId, UUID userId){
-        ChatUserEntity chatUserEntity = chatUserService.findByUserIdAndChatId(chatId,userId);
-
-        if(chatUserEntity==null){
-            throw new ChatNotFoundException("Чат не найден.");
-        }
-
-
+        applicationEventPublisher.publishEvent(new DeleteMessage(message));
     }
 
     @Transactional
@@ -193,6 +194,10 @@ public class MessageService {
             chat = chatService.save(chat);
             chatUserService.save(new ChatUserEntity(chat,userId));
             chatUserService.save(new ChatUserEntity(chat,user.getId()));
+        }
+
+        if(chat==null){
+            throw  new RuntimeException("Не удалось создать чат.");
         }
 
         sendMessage(userId, new MessageDto(chat.getChatId(),message.getMessage(),message.getKeyName()));

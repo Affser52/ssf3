@@ -1,11 +1,13 @@
 package ru.mescat.message.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import ru.mescat.message.dto.UserBlockDto;
 import ru.mescat.message.entity.ChatEntity;
 import ru.mescat.message.entity.ChatUserEntity;
 import ru.mescat.message.entity.UsersBlackListEntity;
+import ru.mescat.message.event.dto.NewUserBlockInChat;
 import ru.mescat.message.exception.ChatNotFoundException;
 import ru.mescat.message.exception.NotFoundException;
 import ru.mescat.message.repository.UsersBlackListRepository;
@@ -20,17 +22,22 @@ public class UsersBlackListService {
     private final UsersBlackListRepository repository;
     private final ChatUserService chatUserService;
     private final ChatService chatService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public UsersBlackListService(UsersBlackListRepository repository,
                                  ChatUserService chatUserService,
-                                 ChatService chatService) {
+                                 ChatService chatService,
+                                 ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher=applicationEventPublisher;
         this.chatService=chatService;
         this.chatUserService=chatUserService;
         this.repository = repository;
     }
 
     public UsersBlackListEntity save(UsersBlackListEntity entity) {
-        return repository.save(entity);
+        UsersBlackListEntity result =  repository.save(entity);
+        applicationEventPublisher.publishEvent(new NewUserBlockInChat(result));
+        return result;
     }
 
     public UsersBlackListEntity findById(Long id) {

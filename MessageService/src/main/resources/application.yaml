@@ -9,12 +9,19 @@ server:
 spring:
   kafka:
     bootstrap-servers: localhost:9092
-    encrypt-keys:
+    delete-encrypt-keys:
       topic: "delete-encrypt-keys"
       group: "delete-encrypt-keys"
-    message-service:
+    message:
       topic: "message-service"
       group: "message-service"
+    chat:
+      topic: "chat-service"
+      group: "chat-service"
+    encrypt-keys:
+      topic: "encrypt-keys-service"
+      group: "encrypt-keys-service"
+
 
   data:
     redis:

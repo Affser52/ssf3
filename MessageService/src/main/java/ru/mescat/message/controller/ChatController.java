@@ -4,6 +4,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.mescat.message.dto.*;
 import ru.mescat.message.entity.ChatUserEntity;
+import ru.mescat.message.exception.ChatNotFoundException;
+import ru.mescat.message.exception.NotFoundException;
 import ru.mescat.message.map.ToChatDtoMapper;
 import ru.mescat.message.service.ChatService;
 import ru.mescat.message.service.ChatUserService;
@@ -88,6 +90,19 @@ public class ChatController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Не удалось заблокировать пользователя.");
+        }
+    }
+
+    @PostMapping("/add_user_in_chat")
+    public ResponseEntity<?> addUserInChat(@RequestHeader("X-User-Id") UUID userId,
+                                           @RequestBody AddUserInChatDto dto){
+        try{
+            chatUserService.addNewUserInChat(dto);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException | ChatNotFoundException e){
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (Exception e){
+            return ResponseEntity.badRequest().build();
         }
     }
 }

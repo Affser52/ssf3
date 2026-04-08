@@ -1,11 +1,14 @@
 package ru.mescat.message.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
+import ru.mescat.message.dto.DeleteMessageDto;
 import ru.mescat.message.dto.MessageDto;
 import ru.mescat.message.dto.MessageForUser;
 import ru.mescat.message.dto.NewMessageToNewChat;
 import ru.mescat.message.entity.MessageEntity;
+import ru.mescat.message.event.dto.DeleteMessage;
 import ru.mescat.message.exception.ChatNotFoundException;
 import ru.mescat.message.exception.NotFoundException;
 import ru.mescat.message.exception.SaveToDatabaseException;
@@ -120,6 +123,21 @@ public class MessageController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Внутренняя ошибка сервера.");
+        }
+    }
+
+    @PostMapping("/delete")
+    public ResponseEntity<?> deleteMessage(@RequestHeader("X-User-Id") UUID userId,
+                                           @RequestBody DeleteMessageDto deleteMessageDto){
+        try{
+            messageService.deleteMessage(deleteMessageDto,userId);
+            return ResponseEntity.ok().build();
+        } catch (ChatNotFoundException | NotFoundException e){
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (AccessDeniedException e){
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (Exception e){
+            return ResponseEntity.badRequest().build();
         }
     }
 }

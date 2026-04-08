@@ -1,12 +1,14 @@
 package ru.mescat.message.service;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.mescat.message.dto.RequestEncryptMessageKeyForUser;
-import ru.mescat.message.dto.ResponseEncryptMessageKeyForUser;
+import ru.mescat.message.dto.MessageKeyForUser;
 import ru.mescat.message.dto.SendEncryptKeyDto;
 import ru.mescat.message.dto.kafka.KeyDelete;
 import ru.mescat.message.entity.SendMessageKeyEntity;
+import ru.mescat.message.event.dto.NewMessageKey;
 import ru.mescat.message.exception.NotFoundException;
 import ru.mescat.message.exception.SaveToDatabaseException;
 import ru.mescat.message.exception.UserBlockedException;
@@ -22,11 +24,14 @@ public class SendMessageKeyService {
     private final SendMessageKeyRepository sendMessageKeyRepository;
     private final ChatUserService chatUserService;
     private final UsersBlackListService usersBlackListService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public SendMessageKeyService(SendMessageKeyRepository sendMessageKeyRepository,
                                  ChatUserService chatUserService,
-                                 UsersBlackListService usersBlackListService) {
+                                 UsersBlackListService usersBlackListService,
+                                 ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher=applicationEventPublisher;
         this.usersBlackListService = usersBlackListService;
         this.chatUserService = chatUserService;
         this.sendMessageKeyRepository = sendMessageKeyRepository;
@@ -137,6 +142,15 @@ public class SendMessageKeyService {
         if (sendMessageKeyEntities.isEmpty()) {
             throw new SaveToDatabaseException("Не удалось сохранить в бд!");
         }
+
+
+        applicationEventPublisher.publishEvent(new NewMessageKey(sendMessageKeyEntities.stream()
+                .map(m -> new MessageKeyForUser(
+                        m.getUserTargetId(),
+                        m.getKey(),
+                        m.getEncryptName(),
+                        m.getPublicKey()
+                )).toList()));
 
     }
 

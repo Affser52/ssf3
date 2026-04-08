@@ -4,15 +4,12 @@ import lombok.*;
 
 import java.util.UUID;
 
-
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @Setter
 @Getter
-@ToString
-public class ResponseEncryptMessageKeyForUser {
+public class AddUserInChatDto {
     private UUID userTarget;
-    private byte[] key;
-    private String encryptName;
-    private UUID publicKeyUser;
+    private Long chatId;
 }

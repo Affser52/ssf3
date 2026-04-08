@@ -11,6 +11,7 @@ import ru.mescat.message.dto.auxiliary.ChatIdLastMessageEncryptName;
 import ru.mescat.message.entity.ChatEntity;
 import ru.mescat.message.entity.ChatUserEntity;
 import ru.mescat.message.entity.enums.ChatType;
+import ru.mescat.message.event.dto.DeleteChat;
 import ru.mescat.message.exception.ChatNotFoundException;
 import ru.mescat.message.exception.DataBaseException;
 import ru.mescat.message.repository.ChatRepository;
@@ -87,6 +88,8 @@ public class ChatService {
         }
 
         deleteById(chatId);
+
+        applicationEventPublisher.publishEvent(new DeleteChat(chatUserEntity.getChat()));
 
     }
 
