@@ -3,12 +3,12 @@
   servlet:
     context-path: /
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never
+    include-binding-errors: never
 
 spring:
   datasource:
-    url: ${USER_DB_URL:jdbc:postgresql://localhost:5433/postgres}
+    url: ${USER_DB_URL:jdbc:postgresql://postgres-user:5432/postgres}
     username: ${USER_DB_USERNAME:postgres}
     password: ${USER_DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -27,7 +27,6 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
           batch_size: 50
@@ -66,3 +65,17 @@ logging:
     org.springframework.web: INFO
     org.hibernate.SQL: OFF
     org.hibernate.orm.jdbc.bind: OFF
+
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT}
+    region: ${S3_REGION}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    avatars-bucket: ${S3_AVATARS_BUCKET}
+    files-bucket: ${S3_FILES_BUCKET}
+    avatar-temp-bucket: ${S3_AVATAR_TEMP_BUCKET}
+    upload-url-ttl: ${S3_UPLOAD_URL_TTL}
+    download-url-ttl: ${S3_DOWNLOAD_URL_TTL}
+    avatar-max-file-size: ${S3_AVATAR_MAX_FILE_SIZE}
+    avatar-cleanup-fixed-delay: ${S3_AVATAR_CLEANUP_FIXED_DELAY}

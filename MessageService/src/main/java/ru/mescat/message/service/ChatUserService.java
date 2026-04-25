@@ -1,6 +1,5 @@
 package ru.mescat.message.service;
 
-
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,19 +22,20 @@ import java.util.UUID;
 
 @Service
 public class ChatUserService {
-    private ChatUserRepository repository;
-    private ChatService chatService;
-    private UserService userService;
-    private ApplicationEventPublisher applicationEventPublisher;
+
+    private final ChatUserRepository repository;
+    private final ChatService chatService;
+    private final UserService userService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public ChatUserService(ChatUserRepository repository,
                            ChatService chatService,
                            UserService userService,
-                           ApplicationEventPublisher applicationEventPublisher){
-        this.applicationEventPublisher=applicationEventPublisher;
-        this.userService=userService;
-        this.chatService=chatService;
-        this.repository=repository;
+                           ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
+        this.userService = userService;
+        this.chatService = chatService;
+        this.repository = repository;
     }
 
     public ChatUserEntity save(ChatUserEntity chatUserEntity) {
@@ -52,7 +52,6 @@ public class ChatUserService {
         return repository.findAllByUserId(userId);
     }
 
-
     public boolean existsById(Long id) {
         return repository.existsById(id);
     }
@@ -65,32 +64,34 @@ public class ChatUserService {
         repository.deleteById(id);
     }
 
-    public List<ChatUserDto> findAllChatUsersByChatIds(List<Long> chatIds,UUID noTargetUser){
+    public List<ChatUserDto> findAllChatUsersByChatIds(List<Long> chatIds, UUID noTargetUser) {
         return repository.findAllChatUsersByChatIds(chatIds, noTargetUser);
     }
 
-    public ChatEntity findPersonalBetween(UUID user1, UUID user2, ChatType chatType){
-        return repository.findPersonalChatBetween(user1,user2,chatType);
+    public ChatEntity findPersonalBetween(UUID user1, UUID user2, ChatType chatType) {
+        return repository.findPersonalChatBetween(user1, user2, chatType);
     }
 
-    public List<UUID> findAllUserIdNotBlocksByChatId(Long chatId){
+    public List<UUID> findAllUserIdNotBlocksByChatId(Long chatId) {
         return repository.findAllUserIdNotBlocksByChatId(chatId);
     }
 
-    public List<ChatUserEntity> findAllNotBlocksByChatId(Long chatId){
+    public List<ChatUserEntity> findAllNotBlocksByChatId(Long chatId) {
         return repository.findAllNotBlocksByChatId(chatId);
     }
 
-    public ChatUserEntity findByUserIdAndChatId(Long chatId,UUID userId){
-        return repository.findByUserIdAndChatId(chatId,userId);
+    public ChatUserEntity findByUserIdAndChatId(Long chatId, UUID userId) {
+        return repository.findByUserIdAndChatId(chatId, userId);
     }
 
     @Transactional
-    public ChatUserEntity addNewUserInChat(AddUserInChatDto dto){
+    public ChatUserEntity addNewUserInChat(AddUserInChatDto dto, UUID initiatorId) {
+        if (dto == null || dto.getChatId() == null || dto.getUserTarget() == null || initiatorId == null) {
+            throw new IllegalArgumentException("Некорректные данные для добавления участника.");
+        }
 
         ChatEntity chat = chatService.findById(dto.getChatId());
-
-        if(chat==null){
+        if (chat == null) {
             throw new ChatNotFoundException("Чат не найден.");
         }
 
@@ -98,10 +99,22 @@ public class ChatUserService {
             throw new AccessDeniedException("В личный диалог нельзя добавлять новых участников.");
         }
 
-        User user = userService.findById(dto.getUserTarget());
+        ChatUserEntity initiator = findByUserIdAndChatId(dto.getChatId(), initiatorId);
+        if (initiator == null) {
+            throw new AccessDeniedException("Нет доступа к этому чату.");
+        }
+        if (!canManageMembers(initiator)) {
+            throw new AccessDeniedException("Добавлять участников могут только администраторы или создатель группы.");
+        }
 
-        if(user==null){
+        User user = userService.findById(dto.getUserTarget());
+        if (user == null) {
             throw new NotFoundException("Пользователь не найден.");
+        }
+
+        ChatUserEntity existing = findByUserIdAndChatId(dto.getChatId(), user.getId());
+        if (existing != null) {
+            return existing;
         }
 
         UserSettings userSettings = userService.getSettingsById(user.getId());
@@ -123,15 +136,15 @@ public class ChatUserService {
             throw new NotFoundException("Пользователь не найден в чате.");
         }
 
-        boolean canManageChat = initiator.getRole() != null
-                && (initiator.getRole().equalsIgnoreCase("CREATOR")
-                || initiator.getRole().equalsIgnoreCase("ADMIN"));
-
-        if (!canManageChat && !userId.equals(dto.getUserTarget())) {
+        if (!canManageMembers(initiator) && !userId.equals(dto.getUserTarget())) {
             throw new AccessDeniedException("Недостаточно прав для удаления участника из чата.");
         }
 
         deleteById(target.getId());
     }
 
+    private boolean canManageMembers(ChatUserEntity user) {
+        return user.getRole() != null
+                && ("CREATOR".equalsIgnoreCase(user.getRole()) || "ADMIN".equalsIgnoreCase(user.getRole()));
+    }
 }

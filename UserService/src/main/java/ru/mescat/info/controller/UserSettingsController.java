@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.mescat.info.entity.UserSettingsEntity;
 import ru.mescat.info.service.UserSettingsService;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @RestController
@@ -32,15 +31,6 @@ public class UserSettingsController {
     public ResponseEntity<UserSettingsEntity> save(@RequestBody UserSettingsEntity entity) {
         UserSettingsEntity saved = userSettingsService.save(entity);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-    }
-
-    @PatchMapping("/{userId}/auto-delete-message")
-    public ResponseEntity<Void> setAutoDeleteMessage(@PathVariable UUID userId,
-                                                     @RequestParam(required = false) OffsetDateTime time) {
-        boolean updated = userSettingsService.setAutoDeleteMessage(time, userId);
-        return updated
-                ? ResponseEntity.ok().build()
-                : ResponseEntity.notFound().build();
     }
 
     @PatchMapping("/{userId}/allow-writing")

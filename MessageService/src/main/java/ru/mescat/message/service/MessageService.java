@@ -77,18 +77,18 @@ public class MessageService {
 
     @Transactional
     public MessageForUser sendMessage(UUID userId, MessageDto messageDto){
-        log.info("Р—Р°РїСЂРѕСЃ РЅР° РѕС‚РїСЂР°РІРєСѓ СЃРѕРѕР±С‰РµРЅРёСЏ: userId={}, chatId={}", userId, messageDto.getChatId());
+        log.info("Запрос на отправку сообщения: userId={}, chatId={}", userId, messageDto.getChatId());
 
         if(!chatUserService.existsByChatIdAndUserId(messageDto.getChatId(),userId)){
-            log.warn("РћС‚РїСЂР°РІРєР° СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚РєР»РѕРЅРµРЅР°: РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ СЃРѕСЃС‚РѕРёС‚ РІ С‡Р°С‚Рµ. userId={}, chatId={}",
+            log.warn("Отправка сообщения отклонена: пользователь не состоит в чате. userId={}, chatId={}",
                     userId, messageDto.getChatId());
-            throw new ChatNotFoundException("Р§Р°С‚ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.");
+            throw new ChatNotFoundException("Чат не существует.");
         }
 
         if(blackListService.isBlockedInChat(messageDto.getChatId(),userId)){
-            log.warn("РћС‚РїСЂР°РІРєР° СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚РєР»РѕРЅРµРЅР°: РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ РІ С‡Р°С‚Рµ. userId={}, chatId={}",
+            log.warn("Отправка сообщения отклонена: пользователь заблокирован в чате. userId={}, chatId={}",
                     userId, messageDto.getChatId());
-            throw new UserBlockedException("Р’Р°СЃ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°Р»Рё РІ РґР°РЅРЅРѕРј С‡Р°С‚Рµ.");
+            throw new UserBlockedException("Вас заблокировали в данном чате.");
         }
 
         ChatEntity chat = chatService.findById(messageDto.getChatId());
@@ -102,21 +102,21 @@ public class MessageService {
         try{
             messageEntity = repository.save(messageEntity);
         } catch (Exception e){
-            log.error("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ: userId={}, chatId={}, error={}",
+            log.error("Не удалось сохранить сообщение: userId={}, chatId={}, error={}",
                     userId, messageDto.getChatId(), e.getMessage());
-            throw new SaveToDatabaseException("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ.");
+            throw new SaveToDatabaseException("Не удалось сохранить сообщение.");
         }
 
         if(messageEntity.getMessageId()==null || messageEntity.getCreatedAt()==null){
-            log.error("РЎРѕРѕР±С‰РµРЅРёРµ СЃРѕС…СЂР°РЅРµРЅРѕ РЅРµРєРѕСЂСЂРµРєС‚РЅРѕ: РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ messageId РёР»Рё createdAt. userId={}, chatId={}",
+            log.error("Сообщение сохранено некорректно: отсутствует messageId или createdAt. userId={}, chatId={}",
                     userId, messageDto.getChatId());
-            throw new DataBaseException("РџСЂРѕР±Р»РµРјР° СЃ РїРѕСЃС‚Р°РЅРѕРІРєРѕР№ РґР°РЅРЅС‹С….");
+            throw new DataBaseException("Проблема с постановкой данных.");
         }
 
         MessageForUser message = MessageEntityToMessageForUser.convert(messageEntity);
 
         applicationEventPublisher.publishEvent(new NewMessage(messageEntity));
-        log.info("РЎРѕРѕР±С‰РµРЅРёРµ РѕС‚РїСЂР°РІР»РµРЅРѕ: messageId={}, chatId={}, senderId={}",
+        log.info("Сообщение отправлено: messageId={}, chatId={}, senderId={}",
                 messageEntity.getMessageId(), messageEntity.getChat().getChatId(), userId);
 
         return message;
@@ -124,7 +124,7 @@ public class MessageService {
 
     public List<MessageEntity> getLastNMessagesForEachUserChat(UUID userId, int limit) {
         if (limit <= 0) {
-            throw new IllegalArgumentException("Р›РёРјРёС‚ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0.");
+            throw new IllegalArgumentException("Лимит должно быть больше 0.");
         }
         return repository.findLastNMessagesForEachUserChat(userId, limit);
     }
@@ -138,10 +138,10 @@ public class MessageService {
 
     public List<MessageEntity> getRecentMessagesInChat(UUID userId, Long chatId, int limit) {
         if (limit <= 0) {
-            throw new IllegalArgumentException("Р›РёРјРёС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0.");
+            throw new IllegalArgumentException("Лимит должен быть больше 0.");
         }
         if (!chatUserService.existsByChatIdAndUserId(chatId, userId)) {
-            throw new ChatNotFoundException("Р§Р°С‚ РЅРµ РЅР°Р№РґРµРЅ.");
+            throw new ChatNotFoundException("Чат не найден.");
         }
 
         List<MessageEntity> desc = repository.findRecentMessagesInChat(
@@ -162,43 +162,43 @@ public class MessageService {
 
     @Transactional
     public void deleteMessage(DeleteMessageDto deleteMessage, UUID userId){
-        log.info("Р—Р°РїСЂРѕСЃ РЅР° СѓРґР°Р»РµРЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ: userId={}, chatId={}, messageId={}",
+        log.info("Запрос на удаление сообщения: userId={}, chatId={}, messageId={}",
                 userId, deleteMessage.getChatId(), deleteMessage.getMessageId());
 
         ChatUserEntity chatUserEntity = chatUserService.findByUserIdAndChatId(deleteMessage.getChatId(),userId);
         if(chatUserEntity==null){
-            log.warn("РЈРґР°Р»РµРЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚РєР»РѕРЅРµРЅРѕ: С‡Р°С‚ РЅРµ РЅР°Р№РґРµРЅ РґР»СЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ. userId={}, chatId={}",
+            log.warn("Удаление сообщения отклонено: чат не найден для пользователя. userId={}, chatId={}",
                     userId, deleteMessage.getChatId());
-            throw new ChatNotFoundException("Р§Р°С‚ РЅРµ РЅР°Р№РґРµРЅ.");
+            throw new ChatNotFoundException("Чат не найден.");
         }
 
         MessageEntity message = findById(deleteMessage.getMessageId());
 
         if(message==null){
-            log.warn("РЈРґР°Р»РµРЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚РєР»РѕРЅРµРЅРѕ: СЃРѕРѕР±С‰РµРЅРёРµ РЅРµ РЅР°Р№РґРµРЅРѕ. messageId={}", deleteMessage.getMessageId());
-            throw new NotFoundException("РЎРѕРѕР±С‰РµРЅРёРµ РЅРµ РЅР°Р№РґРµРЅРѕ.");
+            log.warn("Удаление сообщения отклонено: сообщение не найдено. messageId={}", deleteMessage.getMessageId());
+            throw new NotFoundException("Сообщение не найдено.");
         }
 
         if(chatUserEntity.getChat().getChatType()==ChatType.PERSONAL){
             if(!message.getSenderId().equals(userId)){
-                log.warn("РЈРґР°Р»РµРЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚РєР»РѕРЅРµРЅРѕ: РїРѕРїС‹С‚РєР° СѓРґР°Р»РёС‚СЊ С‡СѓР¶РѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РІ Р»РёС‡РЅРѕРј С‡Р°С‚Рµ. userId={}, messageId={}",
+                log.warn("Удаление сообщения отклонено: попытка удалить чужое сообщение в личном чате. userId={}, messageId={}",
                         userId, deleteMessage.getMessageId());
-                throw new AccessDeniedException("Р’С‹ РЅРµ РјРѕР¶РµС‚Рµ СѓРґР°Р»РёС‚СЊ РЅРµ СЃРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ.");
+                throw new AccessDeniedException("Вы не можете удалить не свое сообщение.");
             }
         } else if(chatUserEntity.getChat().getChatType()==ChatType.GROUP){
             if(!chatUserEntity.getRole().equalsIgnoreCase("ADMIN")
                     && !chatUserEntity.getRole().equalsIgnoreCase("CREATOR")
                     && !message.getSenderId().equals(userId)){
-                log.warn("РЈРґР°Р»РµРЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚РєР»РѕРЅРµРЅРѕ: РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РїСЂР°РІ. userId={}, chatId={}, role={}",
+                log.warn("Удаление сообщения отклонено: недостаточно прав. userId={}, chatId={}, role={}",
                         userId, deleteMessage.getChatId(), chatUserEntity.getRole());
-                throw new AccessDeniedException("Р’С‹ РЅРµ РјРѕР¶РµС‚Рµ СѓРґР°Р»РёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ.");
+                throw new AccessDeniedException("Вы не можете удалить сообщение.");
             }
         }
 
         deleteById(deleteMessage.getMessageId());
 
         applicationEventPublisher.publishEvent(new DeleteMessage(message));
-        log.info("РЎРѕРѕР±С‰РµРЅРёРµ СѓРґР°Р»РµРЅРѕ: messageId={}, chatId={}, deletedBy={}",
+        log.info("Сообщение удалено: messageId={}, chatId={}, deletedBy={}",
                 deleteMessage.getMessageId(), deleteMessage.getChatId(), userId);
     }
 
@@ -210,11 +210,11 @@ public class MessageService {
 
         MessageEntity message = findById(messageId);
         if(message==null){
-            throw new NotFoundException("РЎРѕРѕР±С‰РµРЅРёРµ РЅРµ РЅР°Р№РґРµРЅРѕ.");
+            throw new NotFoundException("Сообщение не найдено.");
         }
 
         if(!chatUserService.existsByChatIdAndUserId(message.getChat().getChatId(),userId)){
-            throw new ChatNotFoundException("Р§Р°С‚ РЅРµ РЅР°Р№РґРµРЅ.");
+            throw new ChatNotFoundException("Чат не найден.");
         }
 
         Long chatId = message.getChat().getChatId();
@@ -251,7 +251,7 @@ public class MessageService {
     @Transactional(readOnly = true)
     public LatestChatEncryptionUsageDto getLatestEncryptionUsage(UUID userId, Long chatId) {
         if (!chatUserService.existsByChatIdAndUserId(chatId, userId)) {
-            throw new ChatNotFoundException("Р§Р°С‚ РЅРµ РЅР°Р№РґРµРЅ.");
+            throw new ChatNotFoundException("Чат не найден.");
         }
 
         MessageEntity latestMessage = findLatestMessageByChatId(chatId);
@@ -263,16 +263,43 @@ public class MessageService {
         return new LatestChatEncryptionUsageDto(chatId, latestMessage.getEncryptionName(), count);
     }
 
+    @Transactional(readOnly = true)
+    public void validateMessageKeyRequest(UUID requesterId,
+                                          Long chatId,
+                                          Long messageId,
+                                          UUID senderId,
+                                          String encryptName) {
+        if (requesterId == null || chatId == null || messageId == null || senderId == null || encryptName == null || encryptName.isBlank()) {
+            throw new IllegalArgumentException("Некорректный запрос ключа сообщения.");
+        }
+        if (requesterId.equals(senderId)) {
+            throw new AccessDeniedException("Нельзя запрашивать ключ у самого себя.");
+        }
+        if (!chatUserService.existsByChatIdAndUserId(chatId, requesterId)
+                || !chatUserService.existsByChatIdAndUserId(chatId, senderId)) {
+            throw new AccessDeniedException("Нет доступа к этому чату.");
+        }
+        boolean messageMatches = repository.existsByMessageIdAndChat_ChatIdAndSenderIdAndEncryptionName(
+                messageId,
+                chatId,
+                senderId,
+                encryptName
+        );
+        if (!messageMatches) {
+            throw new NotFoundException("Сообщение с таким ключом не найдено.");
+        }
+    }
+
     @Transactional
     public ChatDto sendMessageAndCreateChat(UUID userId,NewMessageToNewChat message){
-        log.info("Р—Р°РїСЂРѕСЃ РЅР° СЃРѕР·РґР°РЅРёРµ Р»РёС‡РЅРѕРіРѕ С‡Р°С‚Р° Рё РѕС‚РїСЂР°РІРєСѓ РїРµСЂРІРѕРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ: initiatorId={}, targetId={}",
+        log.info("Запрос на создание личного чата и отправку первого сообщения: initiatorId={}, targetId={}",
                 userId, message.getUserId());
 
         User user = userService.findById(message.getUserId());
 
         if(user==null){
-            log.warn("РЎРѕР·РґР°РЅРёРµ Р»РёС‡РЅРѕРіРѕ С‡Р°С‚Р° РѕС‚РєР»РѕРЅРµРЅРѕ: С†РµР»РµРІРѕР№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ РЅР°Р№РґРµРЅ. targetId={}", message.getUserId());
-            throw new NotFoundException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ РЅР°Р№РґРµРЅ.");
+            log.warn("Создание личного чата отклонено: целевой пользователь не найден. targetId={}", message.getUserId());
+            throw new NotFoundException("Пользователь не найден.");
         }
 
         ensureAddChatAllowed(user.getId());
@@ -284,16 +311,16 @@ public class MessageService {
             chat = chatService.save(chat);
             chatUserService.save(new ChatUserEntity(chat,userId));
             chatUserService.save(new ChatUserEntity(chat,user.getId()));
-            log.info("РЎРѕР·РґР°РЅ РЅРѕРІС‹Р№ Р»РёС‡РЅС‹Р№ С‡Р°С‚: chatId={}, userA={}, userB={}",
+            log.info("Создан новый личный чат: chatId={}, userA={}, userB={}",
                     chat.getChatId(), userId, user.getId());
         }
 
         if(chat==null){
-            throw  new RuntimeException("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ С‡Р°С‚.");
+            throw  new RuntimeException("Не удалось создать чат.");
         }
 
         sendMessage(userId, new MessageDto(chat.getChatId(),message.getMessage(),message.getKeyName()));
-        log.info("РџРµСЂРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РІ Р»РёС‡РЅРѕРј С‡Р°С‚Рµ РѕС‚РїСЂР°РІР»РµРЅРѕ: chatId={}, senderId={}", chat.getChatId(), userId);
+        log.info("Первое сообщение в личном чате отправлено: chatId={}, senderId={}", chat.getChatId(), userId);
 
         return new ChatDto(chat.getChatId(),chat.getChatType(),user.getUsername(),
                 user.getAvatarUrl(),message.getMessage(),message.getKeyName());

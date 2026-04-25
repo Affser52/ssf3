@@ -13,20 +13,12 @@ export class ApiClient {
     return this.patchJson(API.settingsUsername, { username });
   }
 
-  async updateProfileAvatarUrl(avatarUrl) {
-    return this.patchJson(API.settingsAvatarUrl, { avatarUrl });
-  }
-
   async updateAllowWriting(value) {
     return this.patchJson(API.settingsAllowWriting, { value: Boolean(value) });
   }
 
   async updateAllowAddChat(value) {
     return this.patchJson(API.settingsAllowAddChat, { value: Boolean(value) });
-  }
-
-  async updateAutoDeleteMessage(value) {
-    return this.patchJson(API.settingsAutoDeleteMessage, { value });
   }
 
   async changePassword(dto) {
@@ -50,7 +42,11 @@ export class ApiClient {
   }
 
   async searchUsers(username) {
-    return this.get(`${API.searchUsers}?username=${encodeURIComponent(username)}`);
+    return this.get(API.searchUsers(username));
+  }
+
+  async getUserProfile(userId) {
+    return this.get(API.userProfile(userId));
   }
 
   async getIdByUsername(username) {
@@ -87,6 +83,33 @@ export class ApiClient {
 
   async sendMessage(dto) {
     return this.postJson(API.sendMessage, dto);
+  }
+
+  async createFileUploadUrl(chatId, file) {
+    return this.postJson(API.fileUploadUrl, {
+      chatId,
+      ...this.#fileRequest(file)
+    });
+  }
+
+  async completeFileUpload(fileId) {
+    return this.postJson(API.fileComplete(fileId), {});
+  }
+
+  async createAvatarUploadUrl(file) {
+    return this.postJson(API.settingsAvatarUploadUrl, this.#fileRequest(file));
+  }
+
+  async completeAvatarUpload(uploadId) {
+    return this.postJson(API.settingsAvatarComplete(uploadId), {});
+  }
+
+  async getChatFiles(chatId) {
+    return this.get(API.chatFiles(chatId));
+  }
+
+  async getFileDownloadUrl(fileId, options = {}) {
+    return this.get(API.fileDownloadUrl(fileId, Boolean(options.inline)));
   }
 
   async deleteMessage(dto) {
@@ -236,5 +259,13 @@ export class ApiClient {
     error.status = status;
     error.payload = payload;
     return error;
+  }
+
+  #fileRequest(file) {
+    return {
+      originalFileName: file?.name || 'file',
+      mimeType: file?.type || 'application/octet-stream',
+      sizeBytes: Number(file?.size || 0)
+    };
   }
 }

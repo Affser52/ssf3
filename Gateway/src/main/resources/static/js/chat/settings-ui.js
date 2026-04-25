@@ -11,14 +11,13 @@ export class SettingsUi {
       settingsTitle: document.getElementById('settingsTitle'),
       settingsMessage: document.getElementById('settingsMessage'),
       settingsUsername: document.getElementById('settingsUsername'),
-      settingsAvatarUrl: document.getElementById('settingsAvatarUrl'),
+      settingsAvatarFile: document.getElementById('settingsAvatarFile'),
+      uploadAvatarBtn: document.getElementById('uploadAvatarBtn'),
       settingsAvatarPreview: document.getElementById('settingsAvatarPreview'),
       settingsCreatedAt: document.getElementById('settingsCreatedAt'),
       saveProfileBtn: document.getElementById('saveProfileBtn'),
       allowWritingCheckbox: document.getElementById('allowWritingCheckbox'),
       allowAddChatCheckbox: document.getElementById('allowAddChatCheckbox'),
-      autoDeleteMessageInput: document.getElementById('autoDeleteMessageInput'),
-      clearAutoDeleteBtn: document.getElementById('clearAutoDeleteBtn'),
       savePreferencesBtn: document.getElementById('savePreferencesBtn'),
       currentPassword: document.getElementById('currentPassword'),
       newPassword: document.getElementById('newPassword'),
@@ -42,15 +41,27 @@ export class SettingsUi {
       tab.addEventListener('click', () => events.onTabChange(tab.dataset.settingsTab));
     });
     this.nodes.saveProfileBtn.addEventListener('click', events.onSaveProfile);
+    this.nodes.uploadAvatarBtn.addEventListener('click', () => this.nodes.settingsAvatarFile.click());
+    this.nodes.settingsAvatarFile.addEventListener('change', () => {
+      const file = this.nodes.settingsAvatarFile.files?.[0] || null;
+      this.nodes.settingsAvatarFile.value = '';
+      if (file) {
+        events.onUploadAvatar(file);
+      }
+    });
+    this.nodes.settingsModal.addEventListener('paste', (event) => {
+      const file = this.#imageFromClipboard(event);
+      if (!file) {
+        return;
+      }
+      event.preventDefault();
+      events.onUploadAvatar(file);
+    });
     this.nodes.savePreferencesBtn.addEventListener('click', events.onSavePreferences);
-    this.nodes.clearAutoDeleteBtn.addEventListener('click', events.onClearAutoDelete);
     this.nodes.changePasswordBtn.addEventListener('click', events.onChangePassword);
     this.nodes.rotateKeysBtn.addEventListener('click', events.onRotateKeys);
     this.nodes.rotateSessionKeysBtn.addEventListener('click', events.onRotateSessionKeys);
     this.nodes.logoutAllBtn.addEventListener('click', events.onLogoutAll);
-    this.nodes.settingsAvatarUrl.addEventListener('input', () => {
-      this.previewAvatar(this.nodes.settingsAvatarUrl.value);
-    });
   }
 
   open() {
@@ -80,20 +91,17 @@ export class SettingsUi {
   renderSettings(view) {
     this.nodes.settingsTitle.textContent = view?.username || '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438';
     this.nodes.settingsUsername.value = view?.username || '';
-    this.nodes.settingsAvatarUrl.value = view?.avatarUrl || '';
     this.nodes.settingsCreatedAt.textContent = view?.createdAt
       ? `\u0410\u043a\u043a\u0430\u0443\u043d\u0442 \u0441\u043e\u0437\u0434\u0430\u043d: ${new Date(view.createdAt).toLocaleString()}`
       : '\u0410\u043a\u043a\u0430\u0443\u043d\u0442 \u0441\u043e\u0437\u0434\u0430\u043d: \u043d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u043e';
     this.nodes.allowWritingCheckbox.checked = Boolean(view?.allowWriting);
     this.nodes.allowAddChatCheckbox.checked = Boolean(view?.allowAddChat);
-    this.nodes.autoDeleteMessageInput.value = this.toLocalInputValue(view?.autoDeleteMessage);
     this.previewAvatar(view?.avatarUrl || '');
   }
 
   previewAvatar(url) {
     this.nodes.settingsAvatarPreview.src = url || DEFAULT_AVATAR;
   }
-
   renderDiagnostics(diagnostics) {
     const lines = [
       `userId: ${diagnostics?.userId || '-'}`,
@@ -110,16 +118,14 @@ export class SettingsUi {
 
   readProfileForm() {
     return {
-      username: this.nodes.settingsUsername.value,
-      avatarUrl: this.nodes.settingsAvatarUrl.value
+      username: this.nodes.settingsUsername.value
     };
   }
 
   readPreferencesForm() {
     return {
       allowWriting: this.nodes.allowWritingCheckbox.checked,
-      allowAddChat: this.nodes.allowAddChatCheckbox.checked,
-      autoDeleteMessage: this.fromLocalInputValue(this.nodes.autoDeleteMessageInput.value)
+      allowAddChat: this.nodes.allowAddChatCheckbox.checked
     };
   }
 
@@ -137,19 +143,30 @@ export class SettingsUi {
     this.nodes.confirmPassword.value = '';
   }
 
-  clearAutoDelete() {
-    this.nodes.autoDeleteMessageInput.value = '';
+  setAvatarUploadBusy(busy, progress = null) {
+    this.nodes.uploadAvatarBtn.disabled = Boolean(busy);
+    if (!busy) {
+      this.nodes.uploadAvatarBtn.textContent = '\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0430\u0432\u0430\u0442\u0430\u0440\u043a\u0443';
+      return;
+    }
+    const suffix = Number.isFinite(progress) ? ` ${Math.max(0, Math.min(100, progress))}%` : '';
+    this.nodes.uploadAvatarBtn.textContent = `\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430${suffix}`;
   }
 
-  toLocalInputValue(value) {
-    if (!value) return '';
-    const date = new Date(value);
-    const pad = (x) => String(x).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  #imageFromClipboard(event) {
+    const items = Array.from(event.clipboardData?.items || []);
+    for (const item of items) {
+      if (!String(item.type || '').startsWith('image/')) {
+        continue;
+      }
+      const blob = item.getAsFile();
+      if (!blob) {
+        continue;
+      }
+      const extension = item.type === 'image/png' ? 'png' : 'jpg';
+      return new File([blob], `avatar-from-clipboard.${extension}`, { type: item.type });
+    }
+    return null;
   }
 
-  fromLocalInputValue(value) {
-    if (!value) return null;
-    return new Date(value).toISOString();
-  }
 }

@@ -1,7 +1,8 @@
-import { ApiClient } from './api.js';
+﻿import { ApiClient } from './api.js';
 import { ChatManager } from './chat-manager.js';
 import { CryptoEngine } from './crypto.js';
 import { FrontendDb } from './db.js';
+import { FileUploader } from './file-uploader.js';
 import { KeyManager } from './key-manager.js';
 import { SettingsManager } from './settings-manager.js';
 import { SettingsUi } from './settings-ui.js';
@@ -14,11 +15,21 @@ const crypto = new CryptoEngine();
 const ui = new ChatUi();
 const settingsUi = new SettingsUi();
 const keyManager = new KeyManager({ api, db, crypto, ui });
-const chatManager = new ChatManager({ api, ui, keyManager });
-const settingsManager = new SettingsManager({ api, ui, settingsUi, keyManager });
+const fileUploader = new FileUploader({ api });
+const chatManager = new ChatManager({ api, ui, keyManager, fileUploader });
+const settingsManager = new SettingsManager({ api, ui, settingsUi, keyManager, fileUploader });
 
 let userId = null;
 let ws = null;
+const realtimeState = {
+  payloads: [],
+  timer: null,
+  running: false
+};
+const memberSearchState = {
+  timer: null,
+  requestId: 0
+};
 
 void start();
 
@@ -103,6 +114,16 @@ function bindUi() {
         ui.appendStatus('Сообщение отправлено.', 'ok');
       });
     },
+    onAttachFile: async (file) => {
+      await runAction(async () => {
+        await chatManager.sendFile(file);
+      });
+    },
+    onOpenFile: async (fileId) => {
+      await runAction(async () => {
+        await chatManager.openFile(fileId);
+      });
+    },
     onCreateGroupChat: async () => {
       await runAction(async () => {
         const title = ui.nodes.groupTitleInput.value;
@@ -132,9 +153,23 @@ function bindUi() {
     onMemberAction: async (action) => {
       await runAction(async () => {
         const username = ui.nodes.memberInput.value;
-        await chatManager.memberAction(action, username);
-        ui.nodes.memberInput.value = '';
+        const selectedUserId = ui.getSelectedMemberUserId?.();
+        await chatManager.memberAction(action, username, selectedUserId);
+        ui.clearMemberSelection?.();
         ui.appendStatus(`Действие с участником выполнено: ${action}.`, 'ok');
+      });
+    },
+    onMemberSearch: (query) => {
+      scheduleMemberSearch(query);
+    },
+    onOpenUserProfile: async (profileUserId, anchor) => {
+      await runAction(async () => {
+        const profile = await api.getUserProfile(profileUserId);
+        ui.renderUserProfilePopover(profile, anchor, async (selectedProfile) => {
+          await runAction(async () => {
+            await chatManager.openPersonalChatByUserId(selectedProfile.id || selectedProfile.userId);
+          });
+        });
       });
     },
     onToggleChatMenu: () => {
@@ -241,11 +276,8 @@ function bindUi() {
     onClose: () => settingsManager.close(),
     onTabChange: (tabName) => settingsManager.setTab(tabName),
     onSaveProfile: async () => { await runAction(async () => { await settingsManager.saveProfile(); }); },
+    onUploadAvatar: async (file) => { await runAction(async () => { await settingsManager.uploadAvatar(file); }); },
     onSavePreferences: async () => { await runAction(async () => { await settingsManager.savePreferences(); }); },
-    onClearAutoDelete: () => {
-      settingsUi.clearAutoDelete();
-      settingsUi.setStatus('Дата автоудаления очищена. Не забудьте сохранить изменения.', 'info');
-    },
     onChangePassword: async () => { await runAction(async () => { await settingsManager.changePassword(); }); },
     onRotateKeys: async () => { await runAction(async () => { await settingsManager.rotateKeys(); }); },
     onRotateSessionKeys: async () => { await runAction(async () => { await settingsManager.rotateSessionKeys(); }); },
@@ -268,31 +300,17 @@ async function stepChats() {
   ui.appendStatus('Загружаю список чатов...', 'info');
   await chatManager.refreshChats();
 }
-
 function stepWebSocket() {
   ui.appendStatus('Запускаю realtime-синхронизацию...', 'info');
   ws = new WsManager({
     ui,
-    onMessage: async (rawBody) => {
+    onMessage: (rawBody) => {
       try {
         if (!rawBody) {
           return;
         }
-        const imported = await keyManager.ingestPendingMessageKeys();
         const payload = JSON.parse(rawBody);
-        await chatManager.handleRealtimeEvent(payload, ws);
-        await keyManager.retryFailedSenderKeyDeliveries();
-        if (imported.importedCount > 0 && chatManager.activeChatId) {
-          await chatManager.refreshVisibleMessages(chatManager.activeChatId);
-        }
-        if (chatManager.activeChatId) {
-          await chatManager.loadMessages(chatManager.activeChatId);
-        }
-        await chatManager.refreshChats();
-        syncWsChats();
-        if (payload?.type) {
-          ui.appendStatus(`Пришло realtime-событие: ${payload.type}`, 'info');
-        }
+        scheduleRealtimeSync(payload);
       } catch (error) {
         ui.appendStatus(`Не удалось обработать realtime-событие: ${error.message}`, 'error');
       }
@@ -302,9 +320,145 @@ function stepWebSocket() {
   ws.connect(chatManager.chats.map((chat) => chat.chatId));
 }
 
+function scheduleRealtimeSync(payload) {
+  realtimeState.payloads.push(payload);
+  if (realtimeState.timer) {
+    clearTimeout(realtimeState.timer);
+  }
+  realtimeState.timer = setTimeout(() => {
+    realtimeState.timer = null;
+    void processRealtimeBatch();
+  }, 180);
+}
+
+async function processRealtimeBatch() {
+  if (realtimeState.running) {
+    return;
+  }
+
+  realtimeState.running = true;
+  try {
+    const payloads = realtimeState.payloads.splice(0);
+    if (payloads.length === 0) {
+      return;
+    }
+
+    const userKeysSynced = await syncUserPrivateKeysIfNeeded(payloads);
+    const imported = await keyManager.ingestPendingMessageKeys();
+    for (const payload of payloads) {
+      await chatManager.handleRealtimeEvent(payload, ws);
+    }
+    await keyManager.retryFailedSenderKeyDeliveries();
+
+    const activeChatId = chatManager.activeChatId;
+    const touchedActiveChat = activeChatId && payloads.some((payload) => {
+      const chatId = getRealtimeChatId(payload);
+      return (!chatId || Number(chatId) === Number(activeChatId)) && !isOwnRealtimePayload(payload);
+    });
+
+    if (imported.importedCount > 0 && activeChatId) {
+      await chatManager.refreshVisibleMessages(activeChatId, { preserveScroll: true });
+    }
+    if (userKeysSynced) {
+      ui.appendStatus('Новый пользовательский ключ получен и сохранён локально.', 'ok');
+    }
+
+    if (touchedActiveChat) {
+      await chatManager.loadMessages(activeChatId, { preserveScroll: true });
+    }
+
+    await chatManager.refreshChats();
+    syncWsChats();
+  } catch (error) {
+    ui.appendStatus(`Не удалось обработать realtime-синхронизацию: ${error.message}`, 'error');
+  } finally {
+    realtimeState.running = false;
+    if (realtimeState.payloads.length > 0) {
+      void processRealtimeBatch();
+    }
+  }
+}
+
+async function syncUserPrivateKeysIfNeeded(payloads) {
+  const shouldSync = payloads.some((payload) => {
+    const type = String(payload?.type || '').toUpperCase();
+    return type === 'NEW_PRIVATE_KEY'
+      || type === 'NEW_PUBLIC_KEY'
+      || Boolean(payload?.payload?.newPrivateKey);
+  });
+
+  if (!shouldSync) {
+    return false;
+  }
+
+  const result = await keyManager.syncUserPrivateKeysFromServer();
+  return Boolean(result?.imported);
+}
+
+function getRealtimeChatId(payload) {
+  const body = payload?.payload;
+  return body?.message?.chat?.chatId
+    || body?.message?.chatId
+    || body?.file?.chat?.chatId
+    || body?.file?.chatId
+    || body?.chat?.chatId
+    || body?.chatId
+    || body?.chatUserEntity?.chat?.chatId
+    || body?.usersBlackListEntity?.chat?.chatId
+    || null;
+}
+
+function getRealtimeSenderId(payload) {
+  const body = payload?.payload;
+  return body?.message?.senderId
+    || body?.file?.senderId
+    || body?.senderId
+    || payload?.senderId
+    || null;
+}
+
+function isOwnRealtimePayload(payload) {
+  const senderId = getRealtimeSenderId(payload);
+  return senderId && String(senderId) === String(userId);
+}
+
 function syncWsChats() {
   if (ws) {
     ws.syncChats(chatManager.chats.map((chat) => chat.chatId));
+  }
+}
+
+function scheduleMemberSearch(query) {
+  if (memberSearchState.timer) {
+    clearTimeout(memberSearchState.timer);
+  }
+
+  memberSearchState.timer = setTimeout(() => {
+    memberSearchState.timer = null;
+    void runMemberSearch(query);
+  }, 220);
+}
+
+async function runMemberSearch(query) {
+  const requestId = ++memberSearchState.requestId;
+  const chat = chatManager.activeChat;
+  const clean = String(query || '').trim();
+
+  if (!chat || chat.chatType !== 'GROUP' || !chat.canManageMembers || clean.length < 2) {
+    ui.clearMemberSuggestions?.();
+    return;
+  }
+
+  try {
+    const users = await chatManager.searchUsersOnly(clean);
+    if (requestId !== memberSearchState.requestId) {
+      return;
+    }
+    ui.renderMemberSuggestions(users);
+  } catch (error) {
+    if (requestId === memberSearchState.requestId) {
+      ui.clearMemberSuggestions?.();
+    }
   }
 }
 
@@ -317,3 +471,4 @@ async function runAction(action) {
     settingsUi.setStatus(message, 'error');
   }
 }
+

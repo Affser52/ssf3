@@ -21,3 +21,31 @@ create table if not exists user_settings (
         references users(id)
         on delete cascade
 );
+
+create table if not exists avatar_upload (
+    upload_id uuid primary key default gen_random_uuid(),
+    user_id uuid not null,
+    status text not null,
+    temp_bucket text not null,
+    temp_object_key text not null unique,
+    final_bucket text not null,
+    final_object_key text not null,
+    original_file_name text not null,
+    mime_type text not null,
+    size_bytes bigint not null,
+    upload_url_expires_at timestamptz,
+    created_at timestamptz not null default now(),
+
+    constraint fk_avatar_upload_user
+        foreign key (user_id)
+        references users(id)
+        on delete cascade,
+    constraint chk_avatar_upload_size_positive
+        check (size_bytes > 0)
+);
+
+create index if not exists idx_avatar_upload_user_status
+    on avatar_upload(user_id, status);
+
+create index if not exists idx_avatar_upload_status_expires
+    on avatar_upload(status, upload_url_expires_at);

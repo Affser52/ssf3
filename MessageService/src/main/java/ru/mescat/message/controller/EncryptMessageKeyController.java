@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.mescat.message.dto.SendEncryptKeyDto;
 import ru.mescat.message.dto.kafka.KeyDelete;
 import ru.mescat.message.exception.ChatNotFoundException;
+import ru.mescat.message.exception.NotFoundException;
 import ru.mescat.message.exception.SaveToDatabaseException;
 import ru.mescat.message.exception.UserBlockedException;
 import ru.mescat.message.service.SendMessageKeyService;
@@ -45,10 +46,12 @@ public class EncryptMessageKeyController {
             return ResponseEntity.ok(sendMessageKeyService.sendEncryptKey(userId, sendEncryptKeyDto));
         } catch (SaveToDatabaseException e) {
             return ResponseEntity.status(500).body(e.getMessage());
-        } catch (ChatNotFoundException e) {
+        } catch (ChatNotFoundException | NotFoundException e) {
             return ResponseEntity.status(404).body(e.getMessage());
         } catch (UserBlockedException e) {
             return ResponseEntity.status(403).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

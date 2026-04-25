@@ -1,4 +1,4 @@
-﻿import { LIMITS } from './constants.js';
+import { LIMITS } from './constants.js';
 import { normalizeBase64 } from './base64.js';
 
 export class KeyManager {
@@ -9,6 +9,7 @@ export class KeyManager {
     this.ui = ui;
     this.userId = null;
     this.currentKey = null;
+    this.retrySenderKeysInFlight = false;
   }
 
   async init(userId) {
@@ -22,7 +23,7 @@ export class KeyManager {
 
     if (!this.currentKey && !serverKey) {
       await this.#createAndUploadNewCurrentKey();
-      this.ui.setKeyState('РЎРѕР·РґР°РЅР° РЅРѕРІР°СЏ РїР°СЂР° user-РєР»СЋС‡РµР№.', true);
+      this.ui.setKeyState('Создана новая пара user-ключей.', true);
       return;
     }
 
@@ -36,7 +37,7 @@ export class KeyManager {
           privateKeyB64: this.currentKey.privateKeyB64
         });
       }
-      this.ui.setKeyState('РџСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅ РЅР° СЃРµСЂРІРµСЂРµ.', true);
+      this.ui.setKeyState('Публичный ключ восстановлен на сервере.', true);
       return;
     }
 
@@ -49,11 +50,11 @@ export class KeyManager {
 
       const restored = await this.#tryRestoreFromPending(serverKey.id);
       if (!restored) {
-        await this.#createAndUploadNewCurrentKey();
+        await this.#createAndUploadNewCurrentKey(serverKey);
         this.ui.setKeyState('Создана новая пара user-ключей для текущего аккаунта.', true);
         return;
       }
-      this.ui.setKeyState('РљР»СЋС‡Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РіРѕС‚РѕРІС‹.', true);
+      this.ui.setKeyState('Ключи пользователя готовы.', true);
       return;
     }
 
@@ -63,7 +64,7 @@ export class KeyManager {
         publicKeyB64: serverKey.keyB64,
         privateKeyB64: this.currentKey.privateKeyB64
       });
-      this.ui.setKeyState('РљР»СЋС‡Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅС‹.', true);
+      this.ui.setKeyState('Ключи пользователя синхронизированы.', true);
       return;
     }
 
@@ -75,11 +76,37 @@ export class KeyManager {
 
     const restored = await this.#tryRestoreFromPending(serverKey.id);
     if (!restored) {
-      await this.#createAndUploadNewCurrentKey();
+      await this.#createAndUploadNewCurrentKey(serverKey);
       this.ui.setKeyState('Создана новая пара user-ключей для текущего аккаунта.', true);
       return;
     }
-    this.ui.setKeyState('РљР»СЋС‡Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РѕР±РЅРѕРІР»РµРЅС‹.', true);
+    this.ui.setKeyState('Ключи пользователя обновлены.', true);
+  }
+
+  async syncUserPrivateKeysFromServer() {
+    const serverKey = await this.#safeGetOwnPublicKey();
+    if (!serverKey?.id && !serverKey?.keyB64) {
+      return { imported: false };
+    }
+
+    this.currentKey = await this.db.getCurrentUserKey(this.userId);
+    if (this.#isSamePublicKey(this.currentKey, serverKey)) {
+      return { imported: false };
+    }
+
+    const localRestored = await this.#tryUseLocalUserKey(serverKey);
+    if (localRestored) {
+      this.ui.setKeyState('Найден локальный user-ключ для текущего аккаунта.', true);
+      return { imported: true };
+    }
+
+    const restored = await this.#tryRestoreFromPending(serverKey.id);
+    if (restored) {
+      this.ui.setKeyState('Получен новый user-ключ для текущего аккаунта.', true);
+      return { imported: true };
+    }
+
+    return { imported: false };
   }
 
   async ensureSenderKey(chatId, memberIds) {
@@ -204,7 +231,7 @@ export class KeyManager {
   async rotateSenderKey(chatId, memberIds) {
     const publicKeys = await this.api.getPublicKeysByUsers(memberIds);
     if (!Array.isArray(publicKeys) || publicKeys.length === 0) {
-      throw new Error('РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РїСѓР±Р»РёС‡РЅС‹Рµ РєР»СЋС‡Рё СѓС‡Р°СЃС‚РЅРёРєРѕРІ.');
+      throw new Error('Не удалось получить публичные ключи участников.');
     }
 
     const senderKeyB64 = this.crypto.generateSenderKey();
@@ -215,7 +242,7 @@ export class KeyManager {
     });
 
     if (requestRows.length === 0) {
-      throw new Error('РќРµС‚ РІР°Р»РёРґРЅС‹С… РїСѓР±Р»РёС‡РЅС‹С… РєР»СЋС‡РµР№ РґР»СЏ РѕС‚РїСЂР°РІРєРё sender key.');
+      throw new Error('Нет валидных публичных ключей для отправки sender key.');
     }
 
     const result = await this.api.sendMessageKeys({
@@ -225,7 +252,7 @@ export class KeyManager {
 
     const encryptName = String(result?.encryptName || '');
     if (!encryptName) {
-      throw new Error('РЎРµСЂРІРµСЂ РЅРµ РІРµСЂРЅСѓР» encryptName.');
+      throw new Error('Сервер не вернул encryptName.');
     }
 
     await this.db.upsertSenderKey(this.userId, {
@@ -246,39 +273,48 @@ export class KeyManager {
   }
 
   async retryFailedSenderKeyDeliveries() {
+    if (this.retrySenderKeysInFlight) {
+      return { retried: 0, sent: 0, failed: 0 };
+    }
+
     const pending = this.#readFailedSenderKeyDeliveries();
     if (pending.length === 0) {
       return { retried: 0, sent: 0, failed: 0 };
     }
 
+    this.retrySenderKeysInFlight = true;
     let retried = 0;
     let sent = 0;
     let failed = 0;
     const stillPending = [];
 
-    for (const item of pending) {
-      const chatId = item?.chatId;
-      const encryptName = item?.encryptName;
-      const targets = Array.from(new Set((item?.targets || [])
-        .map((value) => String(value || '').trim())
-        .filter(Boolean)));
+    try {
+      for (const item of pending) {
+        const chatId = item?.chatId;
+        const encryptName = item?.encryptName;
+        const targets = Array.from(new Set((item?.targets || [])
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)));
 
-      if (!chatId || !encryptName || targets.length === 0) {
-        continue;
+        if (!chatId || !encryptName || targets.length === 0) {
+          continue;
+        }
+
+        retried += targets.length;
+        const result = await this.shareSenderKeyByEncryptNameWithUsers(chatId, encryptName, targets);
+        sent += result.sent || 0;
+        failed += result.failed || 0;
+
+        if ((result.failed || 0) > 0) {
+          stillPending.push(item);
+        }
       }
 
-      retried += targets.length;
-      const result = await this.shareSenderKeyByEncryptNameWithUsers(chatId, encryptName, targets);
-      sent += result.sent || 0;
-      failed += result.failed || 0;
-
-      if ((result.failed || 0) > 0) {
-        stillPending.push(item);
-      }
+      this.#writeFailedSenderKeyDeliveries(stillPending);
+      return { retried, sent, failed };
+    } finally {
+      this.retrySenderKeysInFlight = false;
     }
-
-    this.#writeFailedSenderKeyDeliveries(stillPending);
-    return { retried, sent, failed };
   }
   async incrementUsage(chatId, encryptName) {
     return this.db.incrementUsage(this.userId, chatId, encryptName);
@@ -320,7 +356,7 @@ export class KeyManager {
 
     const currentKey = await this.db.getCurrentUserKey(this.userId);
     if (!currentKey?.publicKeyB64 || !currentKey?.publicKeyId) {
-      throw new Error('РќРµС‚ С‚РµРєСѓС‰РµРіРѕ РєР»СЋС‡Р° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РґР»СЏ СЂРѕС‚Р°С†РёРё.');
+      throw new Error('Нет текущего ключа пользователя для ротации.');
     }
 
     const generated = await this.crypto.generateUserKeyPair();
@@ -328,7 +364,7 @@ export class KeyManager {
     const fresh = await this.#safeGetOwnPublicKey();
 
     if (!fresh?.id || !fresh?.keyB64) {
-      throw new Error('РЎРµСЂРІРµСЂ РЅРµ РІРµСЂРЅСѓР» РЅРѕРІС‹Р№ РїСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ РїРѕСЃР»Рµ СЂРѕС‚Р°С†РёРё.');
+      throw new Error('Сервер не вернул новый публичный ключ после ротации.');
     }
 
     const encryptedPrivateKey = await this.crypto.encryptForPublicKey(
@@ -349,7 +385,7 @@ export class KeyManager {
       privateKeyB64: generated.privateKeyB64
     });
 
-    this.ui.setKeyState('РџРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёР№ РєР»СЋС‡ РѕР±РЅРѕРІР»РµРЅ.', true);
+    this.ui.setKeyState('Пользовательский ключ обновлен.', true);
     return fresh;
   }
 
@@ -359,7 +395,7 @@ export class KeyManager {
     const fresh = await this.#safeGetOwnPublicKey();
 
     if (!fresh?.id || !fresh?.keyB64) {
-      throw new Error('РЎРµСЂРІРµСЂ РЅРµ РІРµСЂРЅСѓР» РЅРѕРІС‹Р№ РїСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ РґР»СЏ С‚РµРєСѓС‰РµР№ СЃРµСЃСЃРёРё.');
+      throw new Error('Сервер не вернул новый публичный ключ для текущей сессии.');
     }
 
     await this.#setCurrent({
@@ -368,7 +404,7 @@ export class KeyManager {
       privateKeyB64: generated.privateKeyB64
     });
 
-    this.ui.setKeyState('РЎРѕР·РґР°РЅ РЅРѕРІС‹Р№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёР№ РєР»СЋС‡ РґР»СЏ С‚РµРєСѓС‰РµР№ СЃРµСЃСЃРёРё.', true);
+    this.ui.setKeyState('Создан новый пользовательский ключ для текущей сессии.', true);
     return fresh;
   }
 
@@ -427,7 +463,7 @@ export class KeyManager {
     }
 
     if (deleteFailedCount > 0) {
-      this.ui.appendStatus('РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ С‡Р°СЃС‚СЊ РїРѕР»СѓС‡РµРЅРЅС‹С… РєР»СЋС‡РµР№ СЃ СЃРµСЂРІРµСЂР°. РџРѕРІС‚РѕСЂРёРј РїСЂРё СЃР»РµРґСѓСЋС‰РµР№ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё.', 'info');
+      this.ui.appendStatus('Не удалось удалить часть полученных ключей с сервера. Повторим при следующей синхронизации.', 'info');
     }
 
     return {
@@ -476,7 +512,7 @@ export class KeyManager {
         encryptedSenderKey = await this.crypto.encryptForPublicKey(senderKeyB64, publicKeyB64);
       } catch (error) {
         failedDeliveries.push({ userTarget, publicKeyUser, reason: error?.message || 'public key import failed' });
-        console.warn('РџСЂРѕРїСѓС‰РµРЅ РЅРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РїСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ СѓС‡Р°СЃС‚РЅРёРєР°.', {
+        console.warn('Пропущен некорректный публичный ключ участника.', {
           userId: userTarget,
           keyId: publicKeyUser,
           error: error?.message || error
@@ -540,18 +576,41 @@ export class KeyManager {
     return `mescat_failed_sender_keys:${this.userId}`;
   }
 
-  async #createAndUploadNewCurrentKey() {
+  async #createAndUploadNewCurrentKey(previousServerKey = null) {
     const generated = await this.crypto.generateUserKeyPair();
     await this.api.saveOwnPublicKey(generated.publicKeyB64);
     const serverKey = await this.#safeGetOwnPublicKey();
     const publicKeyId = serverKey?.id || crypto.randomUUID();
     const publicKeyB64 = serverKey?.keyB64 || generated.publicKeyB64;
 
+    if (this.#canPublishNewPrivateKey(previousServerKey, publicKeyId)) {
+      const encryptedPrivateKey = await this.crypto.encryptForPublicKey(
+        generated.privateKeyB64,
+        previousServerKey.keyB64
+      );
+
+      await this.api.saveNewPrivateKey({
+        userId: this.userId,
+        key: encryptedPrivateKey,
+        publicKey: publicKeyId,
+        encryptingPublicKey: previousServerKey.id
+      });
+    }
+
     await this.#setCurrent({
       publicKeyId,
       publicKeyB64,
       privateKeyB64: generated.privateKeyB64
     });
+  }
+
+  #canPublishNewPrivateKey(previousServerKey, nextPublicKeyId) {
+    return Boolean(
+      previousServerKey?.id
+      && previousServerKey?.keyB64
+      && nextPublicKeyId
+      && String(previousServerKey.id) !== String(nextPublicKeyId)
+    );
   }
 
   async #setCurrent(key) {
@@ -773,7 +832,7 @@ export class KeyManager {
     try {
       return decodeURIComponent(escape(atob(messageB64)));
     } catch {
-      return '[РЎРѕРѕР±С‰РµРЅРёРµ Р·Р°С€РёС„СЂРѕРІР°РЅРѕ]';
+      return '[Сообщение зашифровано]';
     }
   }
 }

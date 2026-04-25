@@ -3,7 +3,7 @@ package ru.mescat.info.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.mescat.info.dto.UserCover;
+import ru.mescat.info.dto.UserProfileDto;
 import ru.mescat.info.entity.UserEntity;
 import ru.mescat.info.service.UserService;
 
@@ -47,8 +47,16 @@ public class UserController {
     }
 
     @GetMapping("/search/contains/{username}")
-    public ResponseEntity<List<UserEntity>> findByUsernameContaining(@PathVariable String username) {
-        return ResponseEntity.ok(userService.findByUsernameContaining(username));
+    public ResponseEntity<List<UserEntity>> findByUsernameContaining(@PathVariable String username,
+                                                                     @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(userService.findByUsernameContaining(username, limit));
+    }
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<UserProfileDto> findProfileById(@PathVariable UUID id) {
+        return userService.findProfileById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PatchMapping("/{id}/password")

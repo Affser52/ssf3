@@ -3,7 +3,8 @@ const textDecoder = new TextDecoder();
 
 export class CryptoEngine {
   async generateUserKeyPair() {
-    const keyPair = await crypto.subtle.generateKey(
+    const subtle = this.#subtle();
+    const keyPair = await subtle.generateKey(
       {
         name: 'RSA-OAEP',
         modulusLength: 2048,
@@ -14,8 +15,8 @@ export class CryptoEngine {
       ['encrypt', 'decrypt']
     );
 
-    const publicKey = await crypto.subtle.exportKey('spki', keyPair.publicKey);
-    const privateKey = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+    const publicKey = await subtle.exportKey('spki', keyPair.publicKey);
+    const privateKey = await subtle.exportKey('pkcs8', keyPair.privateKey);
 
     return {
       publicKeyB64: this.bytesToBase64(new Uint8Array(publicKey)),
@@ -24,22 +25,24 @@ export class CryptoEngine {
   }
 
   async encryptForPublicKey(dataB64, publicKeyB64) {
+    const cryptoApi = this.#crypto();
+    const subtle = this.#subtle();
     const publicKey = await this.importPublicKey(publicKeyB64);
-    const aesRaw = crypto.getRandomValues(new Uint8Array(32));
-    const aesKey = await crypto.subtle.importKey(
+    const aesRaw = cryptoApi.getRandomValues(new Uint8Array(32));
+    const aesKey = await subtle.importKey(
       'raw',
       aesRaw,
       { name: 'AES-GCM' },
       false,
       ['encrypt']
     );
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const cipher = await crypto.subtle.encrypt(
+    const iv = cryptoApi.getRandomValues(new Uint8Array(12));
+    const cipher = await subtle.encrypt(
       { name: 'AES-GCM', iv },
       aesKey,
       this.base64ToBytes(dataB64)
     );
-    const encryptedKey = await crypto.subtle.encrypt(
+    const encryptedKey = await subtle.encrypt(
       { name: 'RSA-OAEP' },
       publicKey,
       aesRaw
@@ -56,23 +59,24 @@ export class CryptoEngine {
   }
 
   async decryptWithPrivateKey(encryptedB64, privateKeyB64) {
+    const subtle = this.#subtle();
     const privateKey = await this.importPrivateKey(privateKeyB64);
     const payload = this.tryParseEnvelope(encryptedB64);
 
     if (payload?.alg === 'RSA-OAEP+AES-GCM') {
-      const aesRaw = await crypto.subtle.decrypt(
+      const aesRaw = await subtle.decrypt(
         { name: 'RSA-OAEP' },
         privateKey,
         this.base64ToBytes(payload.key)
       );
-      const aesKey = await crypto.subtle.importKey(
+      const aesKey = await subtle.importKey(
         'raw',
         aesRaw,
         { name: 'AES-GCM' },
         false,
         ['decrypt']
       );
-      const decrypted = await crypto.subtle.decrypt(
+      const decrypted = await subtle.decrypt(
         { name: 'AES-GCM', iv: this.base64ToBytes(payload.iv) },
         aesKey,
         this.base64ToBytes(payload.cipher)
@@ -80,7 +84,7 @@ export class CryptoEngine {
       return this.bytesToBase64(new Uint8Array(decrypted));
     }
 
-    const decrypted = await crypto.subtle.decrypt(
+    const decrypted = await subtle.decrypt(
       { name: 'RSA-OAEP' },
       privateKey,
       this.base64ToBytes(encryptedB64)
@@ -89,14 +93,16 @@ export class CryptoEngine {
   }
 
   generateSenderKey() {
-    const raw = crypto.getRandomValues(new Uint8Array(32));
+    const raw = this.#crypto().getRandomValues(new Uint8Array(32));
     return this.bytesToBase64(raw);
   }
 
   async encryptMessage(plainText, senderKeyB64) {
+    const cryptoApi = this.#crypto();
+    const subtle = this.#subtle();
     const key = await this.importSenderKey(senderKeyB64);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const cipher = await crypto.subtle.encrypt(
+    const iv = cryptoApi.getRandomValues(new Uint8Array(12));
+    const cipher = await subtle.encrypt(
       { name: 'AES-GCM', iv },
       key,
       textEncoder.encode(plainText)
@@ -112,10 +118,11 @@ export class CryptoEngine {
   }
 
   async decryptMessage(messageB64, senderKeyB64) {
+    const subtle = this.#subtle();
     const decoded = this.base64ToString(messageB64);
     const payload = JSON.parse(decoded);
     const key = await this.importSenderKey(senderKeyB64);
-    const plain = await crypto.subtle.decrypt(
+    const plain = await subtle.decrypt(
       { name: 'AES-GCM', iv: this.base64ToBytes(payload.iv) },
       key,
       this.base64ToBytes(payload.cipher)
@@ -125,7 +132,7 @@ export class CryptoEngine {
 
   async importPublicKey(publicKeyB64) {
     try {
-      return await crypto.subtle.importKey(
+      return await this.#subtle().importKey(
         'spki',
         this.base64ToBytes(publicKeyB64),
         { name: 'RSA-OAEP', hash: 'SHA-256' },
@@ -138,7 +145,7 @@ export class CryptoEngine {
   }
 
   async importPrivateKey(privateKeyB64) {
-    return crypto.subtle.importKey(
+    return this.#subtle().importKey(
       'pkcs8',
       this.base64ToBytes(privateKeyB64),
       { name: 'RSA-OAEP', hash: 'SHA-256' },
@@ -148,7 +155,7 @@ export class CryptoEngine {
   }
 
   async importSenderKey(senderKeyB64) {
-    return crypto.subtle.importKey(
+    return this.#subtle().importKey(
       'raw',
       this.base64ToBytes(senderKeyB64),
       { name: 'AES-GCM' },
@@ -193,5 +200,21 @@ export class CryptoEngine {
     } catch {
       return null;
     }
+  }
+
+  #crypto() {
+    const cryptoApi = globalThis.crypto;
+    if (!cryptoApi || typeof cryptoApi.getRandomValues !== 'function') {
+      throw new Error('Браузерная криптография недоступна. Откройте приложение в современном браузере.');
+    }
+    return cryptoApi;
+  }
+
+  #subtle() {
+    const subtle = this.#crypto().subtle;
+    if (!subtle) {
+      throw new Error('Браузерная криптография недоступна для HTTP. Откройте приложение через HTTPS или localhost, иначе ключи и сообщения не смогут шифроваться.');
+    }
+    return subtle;
   }
 }

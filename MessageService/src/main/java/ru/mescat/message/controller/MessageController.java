@@ -64,6 +64,24 @@ public class MessageController {
         }
     }
 
+    @GetMapping("/messages/{messageId}/key-request/validate")
+    public ResponseEntity<?> validateMessageKeyRequest(@RequestHeader("X-User-Id") UUID userId,
+                                                       @PathVariable Long messageId,
+                                                       @RequestParam Long chatId,
+                                                       @RequestParam UUID senderId,
+                                                       @RequestParam String encryptName) {
+        try {
+            messageService.validateMessageKeyRequest(userId, chatId, messageId, senderId, encryptName);
+            return ResponseEntity.ok().build();
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (NotFoundException | ChatNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @GetMapping("/getMessageInChatWithLimit/{messageId}/{count}")
     public ResponseEntity<?> getMessageInChatWithLimit(@RequestHeader("X-User-Id") UUID userId,
                                                        @PathVariable Long messageId,

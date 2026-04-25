@@ -33,13 +33,13 @@ public class EncryptKeyController {
         this.keyVaultService = keyVaultService;
     }
 
-    //РЎРѕР·РґР°РЅРёРµ РїСѓР±Р»РёС‡РЅРѕРіРѕ РєР»СЋС‡Р°
+    //Создание публичного ключа
     @PostMapping("/new_key")
     public ResponseEntity<?> addNewKey(@RequestHeader("X-User-Id") UUID userId,
                                        @RequestBody byte[] publicKey) {
         try {
             createKeyVault.addNewKey(userId, publicKey);
-            return ResponseEntity.ok("РљР»СЋС‡ СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ.");
+            return ResponseEntity.ok("Ключ успешно создан.");
         } catch (ValidationException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (NotFoundException e) {
@@ -51,12 +51,12 @@ public class EncryptKeyController {
         }
     }
 
-    //РџРѕР»СѓС‡РµРЅРёРµ РїСѓР±Р»РёС‡РЅС‹С… РєР»СЋС‡РµР№ РєР°Р¶РґРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РёР· СЃРїРёСЃРєР°.
+    //Получение публичных ключей каждого пользователя из списка.
     @PostMapping("/byUserIdIn")
     public ResponseEntity<?> getAllKeys(@RequestBody List<UUID> uuids) {
         try {
             if (uuids == null || uuids.isEmpty()) {
-                return ResponseEntity.badRequest().body("РЎРїРёСЃРѕРє РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂРѕРІ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+                return ResponseEntity.badRequest().body("Список идентификаторов пользователей не должен быть пустым.");
             }
 
             List<PublicKey> keys = keyVaultService.getKeysByUserIdIn(uuids);
@@ -74,7 +74,7 @@ public class EncryptKeyController {
     public ResponseEntity<?> getAllKeysByIds(@RequestBody List<UUID> ids) {
         try {
             if (ids == null || ids.isEmpty()) {
-                return ResponseEntity.badRequest().body("РЎРїРёСЃРѕРє РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂРѕРІ РєР»СЋС‡РµР№ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+                return ResponseEntity.badRequest().body("Список идентификаторов ключей не должен быть пустым.");
             }
 
             List<PublicKey> keys = keyVaultService.getKeysByIdIn(ids);
@@ -89,26 +89,28 @@ public class EncryptKeyController {
     }
 
 
-    //РџРѕР»СѓС‡РёС‚СЊ РїСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ РїРѕ Р°Р№РґРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+    //Получить публичный ключ по айди пользователя
     @GetMapping("/")
     public ResponseEntity<?> getKey(@RequestHeader("X-User-Id") UUID userId) {
         try {
             PublicKey key = keyVaultService.getKeyByUserId(userId.toString());
 
             if (key == null) {
-                System.out.println("Не нашло!");
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.noContent().build();
             }
 
             return ResponseEntity.ok(key);
         } catch (RemoteServiceException e) {
+            if (e.getStatus() == 404) {
+                return ResponseEntity.noContent().build();
+            }
             return ResponseEntity.status(e.getStatus()).body(e.getResponseBody());
         }
     }
 
-    //РџСЂРё СЃРѕР·РґР°РЅРёРµ РЅРѕРІРѕР№ СЃРµСЃСЃРёРё СЃРѕР·РґР°РµС‚СЃСЏ РЅРѕРІС‹Р№ РїСЂРёРІР°С‚РЅС‹Р№ РєР»СЋС‡, Р° СЃС‚Р°СЂС‹Рј РєР»СЋС‡РµРј С€РёС„СЂСѓРµС‚СЊСЃСЏ РЅРѕРІС‹Р№ РєР»СЋС‡ Рё СЂР°СЃСЃС‹Р»Р°РµС‚СЊСЃСЏ РІСЃРµРј
+    //При создание новой сессии создается новый приватный ключ, а старым ключем шифруеться новый ключ и рассылаеться всем
 
-    //РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РїСЂРёРІР°С‚РЅС‹Рµ РєР»СЋС‡Рё
+    //Получить все приватные ключи
     @GetMapping("/new_private_key")
     public ResponseEntity<?> getNewPrivateKeyEntities(@RequestHeader("X-User-Id") UUID userId) {
         try {
@@ -126,7 +128,7 @@ public class EncryptKeyController {
         }
     }
 
-    //РЎРѕС…СЂР°РЅРµРЅРёРµ РЅРѕРІРѕРіРѕ РїСЂРёРІР°С‚РЅРѕРіРѕ РєР»СЋС‡Р°
+    //Сохранение нового приватного ключа
     @GetMapping("/new_private_key/all")
     public ResponseEntity<?> getNewPrivateKeyChain(@RequestHeader("X-User-Id") UUID userId) {
         try {
@@ -148,16 +150,16 @@ public class EncryptKeyController {
     public ResponseEntity<?> saveNewPrivateKeyEntities(@RequestHeader("X-User-Id") UUID userId,
                                                        @RequestBody NewPrivateKeyDto newPrivateKeyDto) {
         if (newPrivateKeyDto == null) {
-            return ResponseEntity.badRequest().body("РўРµР»Рѕ Р·Р°РїСЂРѕСЃР° РЅРµ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+            return ResponseEntity.badRequest().body("Тело запроса не должно быть пустым.");
         }
         if (newPrivateKeyDto.getUserId() == null || !newPrivateKeyDto.getUserId().equals(userId)) {
-            return ResponseEntity.badRequest().body("РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СЃРѕРІРїР°РґР°РµС‚ СЃ Р°РІС‚РѕСЂРёР·РѕРІР°РЅРЅС‹Рј РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј.");
+            return ResponseEntity.badRequest().body("Идентификатор пользователя не совпадает с авторизованным пользователем.");
         }
         if (newPrivateKeyDto.getKey() == null || newPrivateKeyDto.getKey().length == 0) {
-            return ResponseEntity.badRequest().body("РџСЂРёРІР°С‚РЅС‹Р№ РєР»СЋС‡ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+            return ResponseEntity.badRequest().body("Приватный ключ не должен быть пустым.");
         }
         if (newPrivateKeyDto.getPublicKey() == null) {
-            return ResponseEntity.badRequest().body("РџСѓР±Р»РёС‡РЅС‹Р№ РєР»СЋС‡ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+            return ResponseEntity.badRequest().body("Публичный ключ не должен быть пустым.");
         }
         if (newPrivateKeyDto.getEncryptingPublicKey() == null) {
             return ResponseEntity.badRequest().body("Публичный ключ, которым зашифрован приватный ключ, не должен быть пустым.");
@@ -166,7 +168,7 @@ public class EncryptKeyController {
         try {
             Object saved = newPrivateKeyService.save(newPrivateKeyDto);
             if (saved == null) {
-                return ResponseEntity.status(500).body("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРёРІР°С‚РЅС‹Р№ РєР»СЋС‡.");
+                return ResponseEntity.status(500).body("Не удалось сохранить приватный ключ.");
             }
 
             return ResponseEntity.ok(saved);
@@ -175,3 +177,5 @@ public class EncryptKeyController {
         }
     }
 }
+
+

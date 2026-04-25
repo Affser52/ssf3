@@ -6,7 +6,6 @@ import ru.mescat.info.entity.UserSettingsEntity;
 import ru.mescat.info.repository.UserRepository;
 import ru.mescat.info.repository.UserSettingsRepository;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -47,22 +46,11 @@ public class UserSettingsService {
         entity.setUser_id(userId);
         entity.setAllowWriting(true);
         entity.setAllowAddChat(true);
-        entity.setAutoDeleteMessage(null);
         return repository.save(entity);
     }
 
     public UserSettingsEntity save(UserSettingsEntity entity) {
         return repository.save(entity);
-    }
-
-    public boolean setAutoDeleteMessage(OffsetDateTime time, UUID userId) {
-        UserSettingsEntity entity = findOrCreateById(userId);
-        if (entity == null) {
-            return false;
-        }
-        entity.setAutoDeleteMessage(time);
-        repository.save(entity);
-        return true;
     }
 
     public boolean setAllowWriting(boolean value, UUID userId) {

@@ -163,12 +163,20 @@
           opacity:.7;
         }
 
-        footer{
+footer{
           max-width:1100px;
           margin:0 auto;
           padding:0 16px 24px;
           opacity:.7;
           font-size:13px;
+        }
+        footer a{
+          color:var(--blue2);
+          font-weight:700;
+          text-decoration:none;
+        }
+        footer a:hover{
+          text-decoration:underline;
         }
 
         @media (max-width: 860px){
@@ -215,7 +223,7 @@
 </main>
 
 <footer>
-    © <span id="year"></span> Mescat
+    © <span id="year"></span> Mescat · <a href="https://github.com/busicabo/messenger" target="_blank" rel="noopener noreferrer">GitHub проекта</a>
 </footer>
 
 <script>

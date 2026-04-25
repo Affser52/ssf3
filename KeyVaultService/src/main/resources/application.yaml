@@ -3,14 +3,14 @@
   servlet:
     context-path: /
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never
+    include-binding-errors: never
 
 spring:
   application:
     name: mescat
   datasource:
-    url: ${KEYVAULT_DB_URL:jdbc:postgresql://localhost:5436/postgres}
+    url: ${KEYVAULT_DB_URL:jdbc:postgresql://postgres-keyvault:5432/postgres}
     username: ${KEYVAULT_DB_USERNAME:postgres}
     password: ${KEYVAULT_DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -29,7 +29,6 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
           batch_size: 50

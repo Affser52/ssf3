@@ -10,6 +10,7 @@
 <body>
 <div class="auth-cat auth-cat--left" aria-hidden="true"></div>
 <div class="auth-cat auth-cat--right" aria-hidden="true"></div>
+<div class="auth-cat auth-cat--tiny" aria-hidden="true"></div>
 
 <div class="auth-shell">
     <aside class="auth-aside">
@@ -19,16 +20,16 @@
 
         <div class="auth-note-list">
             <div class="auth-note">
-                <strong>Личные и групповые чаты</strong>
-                <span>Один экран для переписки, участников и настроек.</span>
+                <strong>Сообщения видите только вы</strong>
+                <span>Доступ есть у вас и собеседников: сервер хранит шифртекст и не может прочитать переписку.</span>
             </div>
             <div class="auth-note">
-                <strong>Шифрование под капотом</strong>
-                <span>Пользователь видит только результат, а не цепочку служебных действий.</span>
+                <strong>Минимум данных о вас</strong>
+                <span>Мы не собираем лишнее: ни телефон, ни почту, ни адрес, ни профильные анкеты.</span>
             </div>
             <div class="auth-note">
-                <strong>Удобный повторный вход</strong>
-                <span>После авторизации приложение быстро возвращает вас к чатам.</span>
+                <strong>Простой интерфейс</strong>
+                <span>Чаты, поиск, группы и настройки рядом, без лишних системных шагов.</span>
             </div>
         </div>
     </aside>
@@ -54,6 +55,10 @@
         <div class="auth-link">Нет аккаунта? <a href="/auth/reg">Зарегистрироваться</a></div>
     </main>
 </div>
+
+<footer class="auth-footer">
+    <a href="https://github.com/busicabo/messenger" target="_blank" rel="noopener noreferrer">GitHub проекта</a>
+</footer>
 
 <script type="module" src="/js/auth/login.js"></script>
 </body>

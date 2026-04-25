@@ -9,10 +9,10 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import ru.mescat.security.User;
 import ru.mescat.security.UserSettings;
+import ru.mescat.client.dto.AvatarUploadInitRequestDto;
 import ru.mescat.security.dto.RegDto;
 import ru.mescat.security.exception.RemoteServiceException;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -172,6 +172,44 @@ public class UserService {
         }
     }
 
+    public Object createAvatarUploadUrl(UUID id, AvatarUploadInitRequestDto dto) {
+        try {
+            return restClient.post()
+                    .uri("/user/{id}/avatar/upload-url", id)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(dto)
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+            String message = e.getResponseBodyAsString();
+            log.warn("UserService: ошибка подготовки загрузки аватарки, status={}, userId={}", status, id);
+            throw new RemoteServiceException(status, message);
+        } catch (RestClientException e) {
+            log.error("UserService недоступен при createAvatarUploadUrl: userId={}, error={}", id, e.getMessage());
+            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+        }
+    }
+
+    public Object completeAvatarUpload(UUID id, UUID uploadId) {
+        try {
+            return restClient.post()
+                    .uri("/user/{id}/avatar/{uploadId}/complete", id, uploadId)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientResponseException e) {
+            int status = e.getStatusCode().value();
+            String message = e.getResponseBodyAsString();
+            log.warn("UserService: ошибка завершения загрузки аватарки, status={}, userId={}, uploadId={}", status, id, uploadId);
+            throw new RemoteServiceException(status, message);
+        } catch (RestClientException e) {
+            log.error("UserService недоступен при completeAvatarUpload: userId={}, uploadId={}, error={}", id, uploadId, e.getMessage());
+            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
+        }
+    }
+
     public void updateAllowWriting(UUID id, boolean value) {
         try {
             restClient.patch()
@@ -212,26 +250,4 @@ public class UserService {
         }
     }
 
-    public void updateAutoDeleteMessage(UUID id, OffsetDateTime value) {
-        try {
-            restClient.patch()
-                    .uri(uriBuilder -> {
-                        var builder = uriBuilder.path("/user_settings/{id}/auto-delete-message");
-                        if (value != null) {
-                            builder.queryParam("time", value);
-                        }
-                        return builder.build(id);
-                    })
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (RestClientResponseException e) {
-            int status = e.getStatusCode().value();
-            String message = e.getResponseBodyAsString();
-            log.warn("UserService: ошибка изменения autoDeleteMessage, status={}, userId={}", status, id);
-            throw new RemoteServiceException(status, message);
-        } catch (RestClientException e) {
-            log.error("UserService недоступен при updateAutoDeleteMessage: userId={}, error={}", id, e.getMessage());
-            throw new RemoteServiceException(503, "UserService unavailable: " + e.getMessage());
-        }
-    }
 }

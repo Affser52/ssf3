@@ -52,13 +52,7 @@ public class ChatSidebarService {
         return memberships.stream()
                 .map(membership -> buildSidebarChat(userId, membership, lastMessages.get(membership.getChat().getChatId())))
                 .sorted(Comparator
-                        .comparing(
-                                (SidebarChatDto chat) -> {
-                                    MessageEntity lastMessage = lastMessages.get(chat.getChatId());
-                                    return lastMessage != null ? lastMessage.getCreatedAt() : null;
-                                },
-                                Comparator.nullsLast(Comparator.reverseOrder())
-                        )
+                        .comparing(SidebarChatDto::getLastActivityAt, Comparator.nullsLast(Comparator.reverseOrder()))
                         .thenComparing(SidebarChatDto::getChatId, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
@@ -85,6 +79,7 @@ public class ChatSidebarService {
         SidebarChatDto dto = new SidebarChatDto();
         dto.setChatId(chat.getChatId());
         dto.setChatType(chat.getChatType());
+        dto.setLastActivityAt(lastMessage != null ? lastMessage.getCreatedAt() : chat.getCreatedAt());
         dto.setLastMessage(lastMessage != null ? lastMessage.getMessage() : null);
         dto.setEncryptName(lastMessage != null ? lastMessage.getEncryptionName() : null);
         dto.setCurrentUserRole(membership.getRole());

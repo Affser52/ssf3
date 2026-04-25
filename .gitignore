@@ -1,0 +1,47 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Runtime logs, temporary test output and browser sessions
+logs/
+test/logs/
+test/runtime-logs/
+*.log
+*.out.log
+*.tmp
+
+# Build artifacts
+target/
+**/target/
+build/
+out/
+
+# Frontend/test dependencies and generated reports
+node_modules/
+**/node_modules/
+.npm-cache/
+.playwright/
+playwright-report/
+test-results/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Private keys, certificates and local credential dumps
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+credentials*
+secrets*
+tokens*

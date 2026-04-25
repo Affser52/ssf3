@@ -25,30 +25,44 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .auth-cat {
   position: fixed;
-  width: 220px;
-  height: 220px;
+  z-index: 0;
+  width: clamp(120px, 16vw, 210px);
+  aspect-ratio: 1 / 1;
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  opacity: 0.2;
+  opacity: 0.14;
   pointer-events: none;
+  filter: drop-shadow(0 12px 20px rgba(68, 106, 151, 0.08));
 }
 
 .auth-cat--left {
-  left: 3%;
-  top: 12%;
+  left: max(-22px, 1.5vw);
+  top: 6%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%235a3d24' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'%3E%3Cpath d='M42 46 78 24l16 34M178 45 142 24l-12 35' fill='%23cfc5bb'/%3E%3Cpath d='M49 61c0-27 25-42 60-42s60 15 60 42v87c0 35-18 49-60 49s-60-14-60-49Z' fill='%23cfc5bb'/%3E%3Cpath d='M61 100H25m37 15H22m133-15h35m-39 15h41M85 46h51' stroke='%235a3d24'/%3E%3Ccircle cx='89' cy='88' r='4' fill='%235a3d24'/%3E%3Ccircle cx='129' cy='88' r='4' fill='%235a3d24'/%3E%3Cpath d='m103 100 6-7 7 7m-9 7c4 0 9 3 10 9'/%3E%3Cpath d='M92 128c11 5 18 13 20 24M55 164c11 2 21 10 24 17M163 164c-6 7-8 14-8 23'/%3E%3Cpath d='M47 196v14m107-14v14M55 164c-16 0-28 12-28 27'/%3E%3Cpath d='M59 52h17m61 0h15' stroke='%23745f53'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .auth-cat--right {
-  right: 4%;
-  bottom: 10%;
+  right: max(-38px, 2vw);
+  bottom: 7%;
+  width: clamp(150px, 19vw, 230px);
+  aspect-ratio: 280 / 180;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 280 180'%3E%3Cg fill='none' stroke='%235a3d24' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'%3E%3Cpath d='M64 60 98 36l16 28M170 56l38-22-14 30' fill='%23d3c7ba'/%3E%3Cpath d='M46 82c0-29 35-48 96-48s95 19 95 48v31c0 28-18 38-95 38s-96-10-96-38Z' fill='%23d3c7ba'/%3E%3Ccircle cx='110' cy='84' r='4' fill='%235a3d24'/%3E%3Ccircle cx='144' cy='84' r='4' fill='%235a3d24'/%3E%3Cpath d='m123 96 5-6 5 6m-6 7c7 0 13 3 16 8'/%3E%3Cpath d='M76 84H34m45 12H30m105-12h-26m58 0h46m-47 12h48'/%3E%3Cpath d='M96 48h19m46 0h19' stroke='%23745f53'/%3E%3Cpath d='M232 94c22 4 34 19 34 34 0 12-7 21-17 21'/%3E%3Cpath d='M84 146v12m36-10v10m48-10v10m37-12v12'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.auth-cat--tiny {
+  width: clamp(80px, 9vw, 118px);
+  right: 16%;
+  top: 5%;
+  opacity: 0.1;
+  transform: rotate(7deg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23563a23' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M26 32 38 17l6 18M70 32 58 17l-6 18' fill='%23cfc7bd'/%3E%3Cpath d='M25 39c0-17 9-28 23-28s23 11 23 28v24c0 15-7 23-23 23s-23-8-23-23Z' fill='%23cfc7bd'/%3E%3Ccircle cx='40' cy='48' r='2' fill='%23563a23'/%3E%3Ccircle cx='56' cy='48' r='2' fill='%23563a23'/%3E%3Cpath d='m46 55 2-3 2 3m-6 4c4 3 7 3 10 0M28 53H12m16 7H10m58-7h16m-17 7h17M39 86v6m18-6v6'/%3E%3Cpath d='M64 50c7 0 12 5 12 12M22 68c-10 0-17 6-17 14'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .auth-shell {
@@ -187,7 +201,55 @@ button:hover {
   font-weight: 700;
 }
 
+.auth-footer {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 2;
+  transform: translateX(-50%);
+  font-size: 13px;
+}
+
+.auth-footer a {
+  color: var(--blue-strong);
+  font-weight: 800;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(96, 145, 198, 0.18);
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1180px) {
+  .auth-cat {
+    opacity: 0.1;
+  }
+
+  .auth-cat--left {
+    left: -34px;
+    top: 4%;
+  }
+
+  .auth-cat--right {
+    right: -54px;
+    bottom: 5%;
+  }
+
+  .auth-cat--tiny {
+    right: 10%;
+    top: 4%;
+  }
+}
+
 @media (max-width: 920px) {
+  body {
+    padding-bottom: 58px;
+  }
+
   .auth-shell {
     grid-template-columns: 1fr;
   }
@@ -195,5 +257,9 @@ button:hover {
   .auth-aside,
   .auth-card {
     padding: 26px;
+  }
+
+  .auth-cat {
+    display: none;
   }
 }

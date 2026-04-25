@@ -45,14 +45,13 @@ public class ChatController {
         this.chatUserService = chatUserService;
     }
 
-
-    //Р СџР С•Р В»РЎС“РЎвЂЎР С‘РЎвЂљРЎРЉ Р Р†РЎРѓР Вµ РЎвЂЎР В°РЎвЂљРЎвЂ№
+    // Получить все чаты пользователя.
     @GetMapping("/chats")
     public ResponseEntity<?> getChats(@RequestHeader("X-User-Id") UUID userId) {
         List<ChatDto> chatDtos = chatQueryService.getChatsForUser(userId);
 
         if (chatDtos == null) {
-            return ResponseEntity.status(500).body("Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ РЎР‚Р В°РЎРѓР С—Р В°РЎР‚РЎРѓР С‘РЎвЂљРЎРЉ РЎвЂЎР В°РЎвЂљРЎвЂ№");
+            return ResponseEntity.status(500).body("Не удалось распарсить чаты");
         }
 
         return ResponseEntity.ok(chatDtos);
@@ -67,7 +66,7 @@ public class ChatController {
     public ResponseEntity<?> getChatMembers(@RequestHeader("X-User-Id") UUID userId,
                                             @PathVariable Long chatId) {
         if (!chatUserService.existsByChatIdAndUserId(chatId, userId)) {
-            return ResponseEntity.status(404).body("Р§Р°С‚ РЅРµ РЅР°Р№РґРµРЅ.");
+            return ResponseEntity.status(404).body("Чат не найден.");
         }
 
         return ResponseEntity.ok(chatUserService.findAllUserIdNotBlocksByChatId(chatId));
@@ -77,7 +76,7 @@ public class ChatController {
     public ResponseEntity<?> createPersonalChat(@RequestHeader("X-User-Id") UUID userId,
                                                 @RequestBody CreatePersonalChatDto dto) {
         if (dto == null || dto.getUserId() == null) {
-            return ResponseEntity.badRequest().body("РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.");
+            return ResponseEntity.badRequest().body("Идентификатор пользователя не должен быть пустым.");
         }
 
         try {
@@ -87,17 +86,16 @@ public class ChatController {
         } catch (NotFoundException e) {
             return ResponseEntity.status(404).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ Р»РёС‡РЅС‹Р№ С‡Р°С‚.");
+            return ResponseEntity.status(500).body("Не удалось создать личный чат.");
         }
     }
 
-
-    //РЎРѓР С•Р В·Р Т‘Р В°РЎвЂљРЎРЉ Р С–РЎР‚РЎС“Р С—Р С—Р С•Р Р†Р С•Р в„– РЎвЂЎР В°РЎвЂљ
+    // Создать групповой чат.
     @PostMapping("/group_chat")
     public ResponseEntity<?> createGroupChat(@RequestHeader("X-User-Id") UUID userId,
                                              @RequestBody CreateGroupChatDto dto) {
         if (dto == null) {
-            return ResponseEntity.badRequest().body("Р СћР ВµР В»Р С• Р В·Р В°Р С—РЎР‚Р С•РЎРѓР В° Р Р…Р Вµ Р Т‘Р С•Р В»Р В¶Р Р…Р С• Р В±РЎвЂ№РЎвЂљРЎРЉ Р С—РЎС“РЎРѓРЎвЂљРЎвЂ№Р С.");
+            return ResponseEntity.badRequest().body("Тело запроса не должно быть пустым.");
         }
 
         try {
@@ -105,7 +103,7 @@ public class ChatController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ РЎРѓР С•Р В·Р Т‘Р В°РЎвЂљРЎРЉ Р С–РЎР‚РЎС“Р С—Р С—Р С•Р Р†Р С•Р в„– РЎвЂЎР В°РЎвЂљ.");
+            return ResponseEntity.status(500).body("Не удалось создать групповой чат.");
         }
     }
 
@@ -133,15 +131,15 @@ public class ChatController {
 
     @PostMapping("/add_user_in_chat")
     public ResponseEntity<?> addUserInChat(@RequestHeader("X-User-Id") UUID userId,
-                                           @RequestBody AddUserInChatDto dto){
-        try{
-            chatUserService.addNewUserInChat(dto);
+                                           @RequestBody AddUserInChatDto dto) {
+        try {
+            chatUserService.addNewUserInChat(dto, userId);
             return ResponseEntity.ok().build();
         } catch (AccessDeniedException e) {
             return ResponseEntity.status(403).body(e.getMessage());
-        } catch (NotFoundException | ChatNotFoundException e){
+        } catch (NotFoundException | ChatNotFoundException e) {
             return ResponseEntity.status(404).body(e.getMessage());
-        } catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
@@ -150,7 +148,7 @@ public class ChatController {
     public ResponseEntity<?> deleteUserInChat(@RequestHeader("X-User-Id") UUID userId,
                                               @RequestBody AddUserInChatDto dto) {
         if (dto == null) {
-            return ResponseEntity.badRequest().body("Р СћР ВµР В»Р С• Р В·Р В°Р С—РЎР‚Р С•РЎРѓР В° Р Р…Р Вµ Р Т‘Р С•Р В»Р В¶Р Р…Р С• Р В±РЎвЂ№РЎвЂљРЎРЉ Р С—РЎС“РЎРѓРЎвЂљРЎвЂ№Р С.");
+            return ResponseEntity.badRequest().body("Тело запроса не должно быть пустым.");
         }
 
         try {
@@ -180,6 +178,3 @@ public class ChatController {
         }
     }
 }
-
-
-

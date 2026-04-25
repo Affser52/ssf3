@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import ru.mescat.security.dto.AuthResponse;
 import ru.mescat.security.service.JwtService;
@@ -17,9 +18,12 @@ import java.util.Optional;
 public class AuthCookieService {
 
     private final JwtService jwtService;
+    private final boolean forceSecureCookies;
 
-    public AuthCookieService(JwtService jwtService) {
+    public AuthCookieService(JwtService jwtService,
+                             @Value("${security.cookies.force-secure:false}") boolean forceSecureCookies) {
         this.jwtService = jwtService;
+        this.forceSecureCookies = forceSecureCookies;
     }
 
     public void addAuthCookies(HttpServletResponse response, HttpServletRequest request, AuthResponse tokens) {
@@ -89,6 +93,9 @@ public class AuthCookieService {
     }
 
     private boolean isSecureRequest(HttpServletRequest request) {
+        if (forceSecureCookies) {
+            return true;
+        }
         String forwardedProto = request.getHeader("X-Forwarded-Proto");
         if (forwardedProto != null && !forwardedProto.isBlank()) {
             return "https".equalsIgnoreCase(forwardedProto);

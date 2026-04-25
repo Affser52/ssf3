@@ -1,12 +1,12 @@
 ﻿spring:
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
   application:
     name: mescat
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
     user-online:
       topic: ${KAFKA_USER_ONLINE_TOPIC:user-online}
     message:
@@ -25,13 +25,17 @@ server:
 
 services:
   user:
-    base-url: ${USER_SERVICE_URL:http://localhost:8081}
+    base-url: ${USER_SERVICE_URL:http://user-service:8081}
   message:
-    base-url: ${MESSAGE_SERVICE_URL:http://localhost:8082}
+    base-url: ${MESSAGE_SERVICE_URL:http://message-service:8082}
 
 app:
   security:
     jwt:
-      secret: ${JWT_SECRET:my-super-secret-key-my-super-secret-key-my-super-secret-key}
+      secret: ${JWT_SECRET}
       access-token-expiration: 900000
       refresh-token-expiration: 604800000
+
+security:
+  cookies:
+    force-secure: ${AUTH_COOKIE_SECURE:false}

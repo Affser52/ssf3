@@ -1,9 +1,12 @@
 package ru.mescat.info.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.mescat.info.dto.UserCover;
+import ru.mescat.info.dto.UserProfileDto;
 import ru.mescat.info.entity.UserEntity;
 import ru.mescat.info.repository.UserRepository;
 
@@ -51,8 +54,20 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserEntity> findByUsernameContaining(String x) {
-        return userRepository.findByUsernameContainingIgnoreCase(x);
+    public List<UserEntity> findByUsernameContaining(String x, int limit) {
+        String query = x == null ? "" : x.trim();
+        if (query.isBlank()) {
+            return List.of();
+        }
+
+        int safeLimit = Math.min(Math.max(limit, 1), 10);
+        return userRepository.findByUsernameContainingIgnoreCase(query, PageRequest.of(0, safeLimit));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UserProfileDto> findProfileById(UUID userId) {
+        return userRepository.findById(userId)
+                .map(this::toUserProfile);
     }
 
     public boolean updatePassword(UUID userId, String password) {
@@ -75,6 +90,16 @@ public class UserService {
 
     public List<UserEntity> findAllByIds(List<UUID> userIds) {
         return userRepository.findAllById(userIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserCover> findCoversByIds(List<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .map(this::toUserCover)
+                .toList();
     }
 
     public boolean updateUsername(UUID userId, String username) {
@@ -124,6 +149,11 @@ public class UserService {
         if (normalized.length() < 3 || normalized.length() > 60) {
             throw new IllegalArgumentException("Username должен содержать от 3 до 60 символов.");
         }
+        if (!normalized.matches("[\\p{L}\\p{N}._-]+")) {
+            throw new IllegalArgumentException(
+                    "Username может содержать только буквы, цифры, точку, дефис и нижнее подчеркивание."
+            );
+        }
         return normalized;
     }
 
@@ -139,5 +169,24 @@ public class UserService {
             throw new IllegalArgumentException("Avatar URL должен начинаться с http:// или https://");
         }
         return normalized;
+    }
+
+    public UserCover toUserCover(UserEntity user) {
+        return new UserCover(
+                user.getId(),
+                user.getUsername(),
+                user.getAvatarUrl(),
+                user.isOnline()
+        );
+    }
+
+    public UserProfileDto toUserProfile(UserEntity user) {
+        return new UserProfileDto(
+                user.getId(),
+                user.getUsername(),
+                user.getAvatarUrl(),
+                user.isOnline(),
+                user.getCreatedAt()
+        );
     }
 }

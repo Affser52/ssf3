@@ -7,6 +7,7 @@ import lombok.Setter;
 import lombok.ToString;
 import ru.mescat.message.entity.enums.ChatType;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class SidebarChatDto {
     private ChatType chatType;
     private String title;
     private String avatarUrl;
+    private OffsetDateTime lastActivityAt;
     private byte[] lastMessage;
     private String encryptName;
     private UUID counterpartUserId;

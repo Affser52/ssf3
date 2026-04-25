@@ -44,6 +44,7 @@
 
     <section class="chat-pane">
       <header id="chatHeader" class="chat-header" hidden>
+        <button id="mobileBackBtn" type="button" class="mobile-back-btn" aria-label="Вернуться к списку чатов">←</button>
         <div class="chat-header__main">
           <img id="activeChatAvatar" class="chat-header__avatar" alt="Аватар чата" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='28' fill='%23d7ebff'/%3E%3Cpath d='M20 36 34 18l10 20M76 36 62 18 52 38' fill='%2377aee9'/%3E%3Crect x='24' y='34' width='48' height='44' rx='22' fill='%23f7fbff' stroke='%236aa0d9' stroke-width='4'/%3E%3Ccircle cx='38' cy='52' r='4' fill='%2335577a'/%3E%3Ccircle cx='58' cy='52' r='4' fill='%2335577a'/%3E%3Cpath d='M42 63c4-3 8-3 12 0' stroke='%2335577a' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
           <div class="chat-header__text">
@@ -77,6 +78,7 @@
           <div class="chat-options__form">
             <label for="memberInput">Username участника</label>
             <input id="memberInput" type="text" placeholder="username">
+            <div id="memberSuggestions" class="member-suggestions" hidden></div>
           </div>
 
           <div class="chat-options__actions">
@@ -103,7 +105,10 @@
 
       <footer id="composer" class="composer" hidden>
         <p id="composerHint" class="composer__hint" hidden></p>
+        <div id="fileUploadStatus" class="composer__upload" hidden></div>
         <div class="composer__row">
+          <button id="fileAttachBtn" type="button" class="button button--ghost composer__attach" disabled title="Прикрепить файл">+</button>
+          <input id="fileInput" type="file" hidden>
           <textarea id="messageInput" rows="3" placeholder="Сначала выберите чат" disabled></textarea>
           <button id="sendBtn" type="button" class="button button--primary" disabled>Отправить</button>
         </div>
@@ -155,20 +160,18 @@
     <section class="settings-section" data-settings-section="profile">
       <div class="settings-grid">
         <div class="settings-field settings-field--avatar">
-          <img id="settingsAvatarPreview" class="settings-avatar" alt="Аватар" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='28' fill='%23d7ebff'/%3E%3Cpath d='M20 36 34 18l10 20M76 36 62 18 52 38' fill='%2377aee9'/%3E%3Crect x='24' y='34' width='48' height='44' rx='22' fill='%23f7fbff' stroke='%236aa0d9' stroke-width='4'/%3E%3Ccircle cx='38' cy='52' r='4' fill='%2335577a'/%3E%3Ccircle cx='58' cy='52' r='4' fill='%2335577a'/%3E%3Cpath d='M42 63c4-3 8-3 12 0' stroke='%2335577a' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
-          <p>Аватарка пока задается ссылкой на изображение. Позже можно будет заменить это загрузкой файла.</p>
+          <img id="settingsAvatarPreview" class="settings-avatar" alt="&#1040;&#1074;&#1072;&#1090;&#1072;&#1088;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='28' fill='%23d7ebff'/%3E%3Cpath d='M20 36 34 18l10 20M76 36 62 18 52 38' fill='%2377aee9'/%3E%3Crect x='24' y='34' width='48' height='44' rx='22' fill='%23f7fbff' stroke='%236aa0d9' stroke-width='4'/%3E%3Ccircle cx='38' cy='52' r='4' fill='%2335577a'/%3E%3Ccircle cx='58' cy='52' r='4' fill='%2335577a'/%3E%3Cpath d='M42 63c4-3 8-3 12 0' stroke='%2335577a' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+          <p>&#1042;&#1099;&#1073;&#1077;&#1088;&#1080;&#1090;&#1077; &#1080;&#1079;&#1086;&#1073;&#1088;&#1072;&#1078;&#1077;&#1085;&#1080;&#1077; &#1076;&#1086; 5 &#1052;&#1041; &#1080;&#1083;&#1080; &#1074;&#1089;&#1090;&#1072;&#1074;&#1100;&#1090;&#1077; &#1082;&#1072;&#1088;&#1090;&#1080;&#1085;&#1082;&#1091; &#1095;&#1077;&#1088;&#1077;&#1079; Ctrl+V.</p>
+          <input id="settingsAvatarFile" class="visually-hidden" type="file" accept="image/*">
+          <button id="uploadAvatarBtn" type="button" class="button button--secondary">&#1047;&#1072;&#1075;&#1088;&#1091;&#1079;&#1080;&#1090;&#1100; &#1072;&#1074;&#1072;&#1090;&#1072;&#1088;&#1082;&#1091;</button>
         </div>
         <div class="settings-field">
-          <label for="settingsUsername">Ник</label>
-          <input id="settingsUsername" type="text" placeholder="Ваш ник">
-        </div>
-        <div class="settings-field">
-          <label for="settingsAvatarUrl">Ссылка на аватарку</label>
-          <input id="settingsAvatarUrl" type="url" placeholder="https://...">
+          <label for="settingsUsername">&#1053;&#1080;&#1082;</label>
+          <input id="settingsUsername" type="text" placeholder="&#1042;&#1072;&#1096; &#1085;&#1080;&#1082;">
         </div>
       </div>
       <div class="settings-actions">
-        <button id="saveProfileBtn" type="button" class="button button--primary">Сохранить профиль</button>
+        <button id="saveProfileBtn" type="button" class="button button--primary">&#1057;&#1086;&#1093;&#1088;&#1072;&#1085;&#1080;&#1090;&#1100; &#1087;&#1088;&#1086;&#1092;&#1080;&#1083;&#1100;</button>
       </div>
     </section>
 
@@ -189,13 +192,7 @@
         </span>
       </label>
 
-      <div class="settings-field">
-        <label for="autoDeleteMessageInput">Автоудаление сообщений до даты</label>
-        <input id="autoDeleteMessageInput" type="datetime-local">
-      </div>
-
       <div class="settings-actions">
-        <button id="clearAutoDeleteBtn" type="button" class="button button--ghost">Очистить дату</button>
         <button id="savePreferencesBtn" type="button" class="button button--primary">Сохранить ограничения</button>
       </div>
     </section>
@@ -251,6 +248,7 @@
       <div class="settings-actions">
         <button id="bootstrapKeysBtn" type="button" class="button button--secondary">Синхронизировать ключи</button>
         <button id="wsReconnectBtn" type="button" class="button button--ghost">Переподключить websocket</button>
+        <button id="projectInfoBtn" type="button" class="button button--ghost">О проекте</button>
         <button id="reloadBtn" type="button" class="button button--ghost">Обновить страницу</button>
         <button id="logoutBtn" type="button" class="button button--danger">Выйти</button>
       </div>
@@ -258,7 +256,31 @@
   </div>
 </div>
 
+<div id="projectInfoModal" class="project-info-modal" hidden>
+  <section class="project-info-card" aria-labelledby="projectInfoTitle">
+    <div class="project-info-card__header">
+      <div>
+        <p class="settings-panel__eyebrow">Mescat</p>
+        <h2 id="projectInfoTitle">О проекте</h2>
+      </div>
+      <button id="projectInfoCloseBtn" type="button" class="icon-button icon-button--ghost" aria-label="Закрыть информацию о проекте">×</button>
+    </div>
+
+    <p class="project-info-card__text">
+      Mescat — учебный мессенджер с пользовательскими ключами, websocket-событиями и простым интерфейсом для личных и групповых чатов.
+    </p>
+
+    <div class="project-links">
+      <a href="https://github.com/busicabo/messenger" target="_blank" rel="noopener noreferrer">GitHub проекта</a>
+      <span>Telegram: <a href="https://t.me/Absolutfrt" target="_blank" rel="noopener noreferrer">@Absolutfrt</a></span>
+      <span>Mescat: <strong>mescat_admin</strong></span>
+    </div>
+  </section>
+</div>
+
 <div id="messageMenu" class="menu message-menu" hidden></div>
+<div id="userProfilePopover" class="user-profile-popover" hidden></div>
+<a class="page-project-link chat-project-link" href="https://github.com/busicabo/messenger" target="_blank" rel="noopener noreferrer">GitHub проекта</a>
 
 <script type="module" src="/js/chat/app.js"></script>
 </body>

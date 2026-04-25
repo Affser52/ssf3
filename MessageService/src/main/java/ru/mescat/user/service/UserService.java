@@ -99,6 +99,7 @@ public class UserService {
         try {
             return restClient.post()
                     .uri("/user/getAllById")
+                    .contentType(MediaType.APPLICATION_JSON)
                     .body(userIds)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()

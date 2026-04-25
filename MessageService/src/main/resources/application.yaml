@@ -3,12 +3,12 @@
   servlet:
     context-path: /
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never
+    include-binding-errors: never
 
 spring:
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
     user-online:
       topic: ${KAFKA_USER_ONLINE_TOPIC:user-online}
       group: ${KAFKA_USER_ONLINE_GROUP:user-online-message-service}
@@ -27,12 +27,12 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
   application:
     name: mescat
   datasource:
-    url: ${MESSAGE_DB_URL:jdbc:postgresql://localhost:5435/postgres}
+    url: ${MESSAGE_DB_URL:jdbc:postgresql://postgres-message:5432/postgres}
     username: ${MESSAGE_DB_USERNAME:postgres}
     password: ${MESSAGE_DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -51,7 +51,6 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
           batch_size: 50
@@ -89,12 +88,25 @@ app:
   max-active-key: ${MAX_ACTIVE_KEY:3}
   security:
     jwt:
-      secret: ${JWT_SECRET:my-super-secret-key-my-super-secret-key-my-super-secret-key}
+      secret: ${JWT_SECRET}
       access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
       refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
 services:
   user:
-    base-url: ${USER_SERVICE_URL:http://localhost:8081}
+    base-url: ${USER_SERVICE_URL:http://user-service:8081}
   key-vault:
-    base-url: ${KEY_VAULT_SERVICE_URL:http://localhost:8085}
+    base-url: ${KEY_VAULT_SERVICE_URL:http://key-vault-service:8085}
+
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT}
+    region: ${S3_REGION}
+    access-key: ${S3_ACCESS_KEY}
+    secret-key: ${S3_SECRET_KEY}
+    avatars-bucket: ${S3_AVATARS_BUCKET}
+    files-bucket: ${S3_FILES_BUCKET}
+    upload-url-ttl: ${S3_UPLOAD_URL_TTL}
+    download-url-ttl: ${S3_DOWNLOAD_URL_TTL}
+    max-file-size: ${S3_MAX_FILE_SIZE}
+    cleanup-fixed-delay: ${S3_CLEANUP_FIXED_DELAY}

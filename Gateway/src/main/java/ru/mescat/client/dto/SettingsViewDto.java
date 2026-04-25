@@ -22,5 +22,4 @@ public class SettingsViewDto {
     private boolean online;
     private boolean allowWriting;
     private boolean allowAddChat;
-    private OffsetDateTime autoDeleteMessage;
 }

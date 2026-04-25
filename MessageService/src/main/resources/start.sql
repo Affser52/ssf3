@@ -36,6 +36,47 @@ CREATE TABLE IF NOT EXISTS  message (
         ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS chat_file (
+    file_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    status TEXT NOT NULL,
+    sender_id UUID NOT NULL,
+    chat_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    object_key TEXT NOT NULL UNIQUE,
+    upload_object_key TEXT NOT NULL UNIQUE,
+    upload_url_expires_at TIMESTAMPTZ,
+    file_type TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    size_bytes BIGINT NOT NULL,
+    original_file_name TEXT NOT NULL,
+
+    CONSTRAINT fk_chat_file_chat
+        FOREIGN KEY (chat_id)
+        REFERENCES chat(chat_id)
+        ON DELETE CASCADE,
+    CONSTRAINT chk_chat_file_size_positive
+        CHECK (size_bytes > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_file_chat_created_at
+    ON chat_file(chat_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_chat_file_status
+    ON chat_file(status);
+
+ALTER TABLE chat_file
+    ADD COLUMN IF NOT EXISTS upload_object_key TEXT;
+
+ALTER TABLE chat_file
+    ADD COLUMN IF NOT EXISTS upload_url_expires_at TIMESTAMPTZ;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_file_upload_object_key
+    ON chat_file(upload_object_key)
+    WHERE upload_object_key IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_chat_file_status_upload_expires
+    ON chat_file(status, upload_url_expires_at);
+
 CREATE TABLE IF NOT EXISTS send_message_keys (
       id UUID PRIMARY KEY default gen_random_uuid(),
       encrypt_name TEXT NOT NULL,

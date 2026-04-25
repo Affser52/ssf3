@@ -137,7 +137,7 @@ public class KeyVaultService {
             throw new RemoteServiceException(e.getStatusCode().value(), e.getResponseBodyAsString());
         } catch (RestClientException e) {
             log.error("KeyVaultService unavailable during getPrivateKeyChain: userId={}, error={}", userId, e.getMessage());
-            throw new RemoteServiceException(503, "РЎРµСЂРІРёСЃ С…СЂР°РЅРёР»РёС‰Р° РєР»СЋС‡РµР№ РЅРµРґРѕСЃС‚СѓРїРµРЅ: " + e.getMessage());
+            throw new RemoteServiceException(503, "Сервис хранилища ключей недоступен: " + e.getMessage());
         }
     }
 

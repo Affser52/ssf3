@@ -38,7 +38,11 @@ public class EncryptKeyController {
 
     @GetMapping("/")
     public ResponseEntity<?> getKey(Authentication authentication) {
-        return proxy.get("/api/encrypt_key/", userId(authentication));
+        ResponseEntity<?> response = proxy.get("/api/encrypt_key/", userId(authentication));
+        if (response.getStatusCode().value() == 404) {
+            return ResponseEntity.noContent().build();
+        }
+        return response;
     }
 
     @GetMapping("/new_private_key")

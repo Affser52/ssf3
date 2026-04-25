@@ -52,21 +52,26 @@ public class AuthController {
     @PostMapping("/reg")
     public ResponseEntity<?> reg(@RequestBody RegDto regDto) {
         log.info("Запрос на регистрацию: username={}", regDto.getUsername());
-        UserEntity entity = userService.findByUsername(regDto.getUsername());
+        try {
+            UserEntity entity = userService.findByUsername(regDto.getUsername());
 
-        if (entity != null) {
-            log.warn("Регистрация отклонена: пользователь уже существует, username={}", regDto.getUsername());
-            return ResponseEntity.status(409).body("Пользователь уже существует");
+            if (entity != null) {
+                log.warn("Регистрация отклонена: пользователь уже существует, username={}", regDto.getUsername());
+                return ResponseEntity.status(409).body("Пользователь уже существует");
+            }
+
+            entity = userService.createNewUser(regDto.getUsername(), regDto.getPassword());
+
+            if (entity == null) {
+                log.error("Ошибка регистрации: не удалось создать аккаунт, username={}", regDto.getUsername());
+                return ResponseEntity.status(500).body("Не удалось создать новый аккаунт");
+            }
+
+            log.info("Пользователь зарегистрирован: userId={}, username={}", entity.getId(), entity.getUsername());
+            return ResponseEntity.ok(entity);
+        } catch (IllegalArgumentException e) {
+            log.warn("Регистрация отклонена: username={}, reason={}", regDto.getUsername(), e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-
-        entity = userService.createNewUser(regDto.getUsername(), regDto.getPassword());
-
-        if (entity == null) {
-            log.error("Ошибка регистрации: не удалось создать аккаунт, username={}", regDto.getUsername());
-            return ResponseEntity.status(500).body("Не удалось создать новый аккаунт");
-        }
-
-        log.info("Пользователь зарегистрирован: userId={}, username={}", entity.getId(), entity.getUsername());
-        return ResponseEntity.ok(entity);
     }
 }

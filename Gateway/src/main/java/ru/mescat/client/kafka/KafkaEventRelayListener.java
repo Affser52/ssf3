@@ -41,11 +41,13 @@ public class KafkaEventRelayListener {
             JsonNode root = OBJECT_MAPPER.readTree(raw);
 
             sendToChatIfPresent(root, "payload", "message", "chat", "chatId");
+            sendToChatIfPresent(root, "payload", "file", "chat", "chatId");
             sendToChatIfPresent(root, "payload", "chat", "chatId");
             sendToChatIfPresent(root, "payload", "chatUserEntity", "chat", "chatId");
             sendToChatIfPresent(root, "payload", "usersBlackListEntity", "chat", "chatId");
 
             sendToUserIfPresent(root, "payload", "message", "senderId");
+            sendToUserIfPresent(root, "payload", "file", "senderId");
             sendToUserIfPresent(root, "payload", "chatUserEntity", "userId");
             sendToUserIfPresent(root, "payload", "usersBlackListEntity", "userInitiator");
             sendToUserIfPresent(root, "payload", "usersBlackListEntity", "userTarget");

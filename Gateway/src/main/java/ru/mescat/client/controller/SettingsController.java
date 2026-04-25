@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import ru.mescat.client.dto.AvatarUploadInitRequestDto;
 import ru.mescat.client.dto.ChangePasswordDto;
 import ru.mescat.client.dto.SettingsViewDto;
-import ru.mescat.client.dto.UpdateAutoDeleteMessageDto;
-import ru.mescat.client.dto.UpdateAvatarUrlDto;
 import ru.mescat.client.dto.UpdateBooleanValueDto;
 import ru.mescat.client.dto.UpdateUsernameDto;
 import ru.mescat.security.User;
@@ -59,12 +59,26 @@ public class SettingsController {
     }
 
     @PatchMapping("/profile/avatar-url")
-    public ResponseEntity<?> updateAvatarUrl(@RequestBody UpdateAvatarUrlDto dto,
+    public ResponseEntity<?> updateAvatarUrl(@RequestBody(required = false) Object ignored,
                                              Authentication authentication) {
+        return ResponseEntity.status(410).body("\u0410\u0432\u0430\u0442\u0430\u0440\u043a\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u044f\u0435\u0442\u0441\u044f \u0442\u043e\u043b\u044c\u043a\u043e \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u043e\u0439 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f.");
+    }
+
+    @PostMapping("/profile/avatar/upload-url")
+    public ResponseEntity<?> createAvatarUploadUrl(@RequestBody AvatarUploadInitRequestDto dto,
+                                                   Authentication authentication) {
         try {
-            UUID userId = userId(authentication);
-            userService.updateAvatarUrl(userId, dto != null ? dto.getAvatarUrl() : null);
-            return ResponseEntity.ok(loadView(userId));
+            return ResponseEntity.ok(userService.createAvatarUploadUrl(userId(authentication), dto));
+        } catch (RemoteServiceException e) {
+            return ResponseEntity.status(e.getStatus()).body(e.getResponseBody());
+        }
+    }
+
+    @PostMapping("/profile/avatar/{uploadId}/complete")
+    public ResponseEntity<?> completeAvatarUpload(@PathVariable UUID uploadId,
+                                                  Authentication authentication) {
+        try {
+            return ResponseEntity.ok(userService.completeAvatarUpload(userId(authentication), uploadId));
         } catch (RemoteServiceException e) {
             return ResponseEntity.status(e.getStatus()).body(e.getResponseBody());
         }
@@ -88,18 +102,6 @@ public class SettingsController {
         try {
             UUID userId = userId(authentication);
             userService.updateAllowAddChat(userId, dto != null && dto.isValue());
-            return ResponseEntity.ok(loadView(userId));
-        } catch (RemoteServiceException e) {
-            return ResponseEntity.status(e.getStatus()).body(e.getResponseBody());
-        }
-    }
-
-    @PatchMapping("/preferences/auto-delete-message")
-    public ResponseEntity<?> updateAutoDeleteMessage(@RequestBody UpdateAutoDeleteMessageDto dto,
-                                                     Authentication authentication) {
-        try {
-            UUID userId = userId(authentication);
-            userService.updateAutoDeleteMessage(userId, dto != null ? dto.getValue() : null);
             return ResponseEntity.ok(loadView(userId));
         } catch (RemoteServiceException e) {
             return ResponseEntity.status(e.getStatus()).body(e.getResponseBody());
@@ -139,8 +141,7 @@ public class SettingsController {
                 user != null ? user.getCreatedAt() : null,
                 user != null && user.isOnline(),
                 settings != null && settings.isAllowWriting(),
-                settings != null && settings.isAllowAddChat(),
-                settings != null ? settings.getAutoDeleteMessage() : null
+                settings != null && settings.isAllowAddChat()
         );
     }
 

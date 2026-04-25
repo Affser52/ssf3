@@ -1,34 +1,40 @@
 package ru.mescat.client.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import ru.mescat.client.service.MessageServiceProxy;
+import ru.mescat.client.service.UserServiceProxy;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
 public class UserController {
 
-    private final MessageServiceProxy proxy;
+    private final UserServiceProxy userProxy;
 
-    public UserController(MessageServiceProxy proxy) {
-        this.proxy = proxy;
+    public UserController(UserServiceProxy userProxy) {
+        this.userProxy = userProxy;
     }
 
     @GetMapping("/{username}/getId")
     public ResponseEntity<?> getIdByUsername(@PathVariable String username) {
-        return proxy.getWithoutUserHeader("/api/" + username + "/getId");
+        return userProxy.get("/user/" + path(username) + "/getId");
     }
 
-    @GetMapping("/search_by_username")
-    public ResponseEntity<?> searchByUsername(@RequestParam String username,
-                                              Authentication authentication) {
-        return proxy.get("/api/search_by_username?username=" + username, userId(authentication));
+    @GetMapping("/search_by_username/{username}")
+    public ResponseEntity<?> searchByUsername(@PathVariable String username) {
+        return userProxy.get("/user/search/contains/" + path(username) + "?limit=10");
     }
 
-    private UUID userId(Authentication authentication) {
-        return UUID.fromString(authentication.getName());
+    @GetMapping("/users/{userId}/profile")
+    public ResponseEntity<?> getUserProfile(@PathVariable UUID userId) {
+        return userProxy.get("/user/" + userId + "/profile");
+    }
+
+    private String path(String value) {
+        return URLEncoder.encode(String.valueOf(value), StandardCharsets.UTF_8)
+                .replace("+", "%20");
     }
 }

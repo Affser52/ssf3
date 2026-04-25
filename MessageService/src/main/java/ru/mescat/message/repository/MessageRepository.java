@@ -58,6 +58,13 @@ public interface MessageRepository extends JpaRepository<MessageEntity, Long> {
 
     long countByChat_ChatIdAndEncryptionName(Long chatId, String encryptionName);
 
+    boolean existsByMessageIdAndChat_ChatIdAndSenderIdAndEncryptionName(
+            Long messageId,
+            Long chatId,
+            UUID senderId,
+            String encryptionName
+    );
+
     @Query("""
             SELECT m
             FROM MessageEntity m

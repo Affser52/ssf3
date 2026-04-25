@@ -223,6 +223,15 @@ public class SendMessageKeyService {
 
             if (r == null || r.getUserTarget() == null || !userIdsSet.contains(r.getUserTarget())) {
                 iterator.remove();
+                continue;
+            }
+
+            if (r.getKey() == null || r.getKey().length == 0) {
+                throw new IllegalArgumentException("Ключ сообщения для получателя не должен быть пустым.");
+            }
+
+            if (r.getPublicKeyUser() == null) {
+                throw new IllegalArgumentException("publicKeyUser обязателен для каждого получателя ключа сообщения.");
             }
         }
 
